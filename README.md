@@ -107,6 +107,22 @@ Putting this all together, whenever an instance of the Comment class is created,
 
 _Note: If a class both declares itself as a profile and declares one or more events, and wants to refer to itself as the profile for any of those events, use `:profile => :self`_
 
+### Rails Rake Tasks ###
+
+There are 3 rakes tasks included for summarizing all of your models' declarations as well as a way to initialize profiles on IActionable.  To see a report of all the events declared across your application, run the following:
+
+    rake riaction:rails:list:events
+
+To see a report of all the profiles declared across your application, run the following:
+
+    rake riaction:rails:list:profiles
+
+Finally, to process all of the models in your application that declare themselves as profiles and initialize them on IActionable (for instance if you've added IActionable to an existing application with an established user base), run the following:
+
+    rake riaction:rails:process:profiles
+
+----------------
+
 ## IActionable ##
 
 [Visit their website!](http://www.iactionable.com)
