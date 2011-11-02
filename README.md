@@ -1,6 +1,12 @@
-## Overview ##
+# Overview #
 
 riaction provides both a ruby wrapper for IActionable's restful API and an "acts-as" style interface for a Rails application's ActiveRecord models to associate them with IActionable profiles and have them drive the logging of game events.
+
+# How To Use #
+
+## Installation ##
+
+    gem install riaction
 
 ## API Wrapper ##
 

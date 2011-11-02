@@ -22,11 +22,11 @@ Gem::Specification.new do |s|
   # s.add_development_dependency "rspec"
   # s.add_runtime_dependency "rest-client"
   
-  s.add_development_dependency "rspec", "~> 2.6"
+  s.add_development_dependency "rspec", ">= 2.6"
   
   s.add_runtime_dependency "faraday"
   s.add_runtime_dependency "faraday-stack"
-  s.add_runtime_dependency "activesupport", "~> 2.0"
+  s.add_runtime_dependency "activesupport", ">= 2.0"
   s.add_runtime_dependency "activerecord"
   s.add_runtime_dependency "resque"
 end

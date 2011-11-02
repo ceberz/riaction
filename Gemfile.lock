@@ -3,7 +3,7 @@ PATH
   specs:
     riaction (0.0.1)
       activerecord
-      activesupport (~> 2.0)
+      activesupport (>= 2.0)
       faraday
       faraday-stack
       resque
@@ -56,4 +56,4 @@ PLATFORMS
 
 DEPENDENCIES
   riaction!
-  rspec (~> 2.6)
+  rspec (>= 2.6)
