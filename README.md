@@ -99,7 +99,7 @@ Putting this all together, whenever an instance of the Comment class is created,
 
     @api.log_event("player", "username", "zortnac", "make_a_comment", {:post => 33})
 
-_Note: If a class both declares itself as a profile and declares one or more events, and wants to refer to itself as the profile for any of those events, use `:trigger => :self`_
+_Note: If a class both declares itself as a profile and declares one or more events, and wants to refer to itself as the profile for any of those events, use `:profile => :self`_
 
 ## IActionable ##
 
