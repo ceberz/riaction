@@ -175,10 +175,14 @@ describe Riaction do
         super
       end
       
-      riaction :profile, :type => :user, :custom => :id
+      riaction :profile, :type => :user, :custom => :id, :username => :name
       
       def id
         42
+      end
+      
+      def name
+        "zortnac"
       end
     end
     
@@ -198,7 +202,7 @@ describe Riaction do
       describe "for loading a profile summary" do
         it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
           @api.should_receive(:get_profile_summary).once.with("user", "custom", @instance.id.to_s, 10).and_return(@mock_response)
-          @instance.riaction_profile_summary(:user, 10).should == @mock_response
+          @instance.riaction_profile_summary(10).should == @mock_response
         end
       end
       
@@ -206,7 +210,14 @@ describe Riaction do
         it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
           @api.stub!(:get_profile_summary).and_return(nil)
           @api.should_receive(:create_profile).once.with("user", "custom", @instance.id.to_s).and_return(@mock_response)
-          @instance.riaction_create_profile(:user).should == @mock_response
+          @instance.riaction_create_profile.should == @mock_response
+        end
+      end
+      
+      describe "for adding new identifiers to a profile" do
+        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
+          @api.should_receive(:add_profile_identifier).once.with("user", "custom", @instance.id.to_s, "username", @instance.name).and_return(@mock_response)
+          @instance.riaction_update_profile(:username).should == @mock_response
         end
       end
       

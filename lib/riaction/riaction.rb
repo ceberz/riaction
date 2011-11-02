@@ -273,8 +273,8 @@ module Riaction
     #  API wrappers #
     #################
     
-    def riaction_profile_summary(profile_type=nil, achievement_count=nil)
-      keys = riaction_profile_keys(profile_type)
+    def riaction_profile_summary(achievement_count=nil)
+      keys = riaction_profile_keys
       unless keys.empty?
         @iactionable_api ||= IActionable::Api.new
         @iactionable_api.get_profile_summary(keys[:profile_type], keys[:id_type], keys[:id], achievement_count)
@@ -285,10 +285,10 @@ module Riaction
       nil
     end
     
-    def riaction_create_profile(profile_type)
-      keys = riaction_profile_keys(profile_type)
+    def riaction_create_profile
+      keys = riaction_profile_keys
       unless keys.empty?
-        existing = riaction_profile_summary(profile_type)
+        existing = riaction_profile_summary
         unless existing
           @iactionable_api ||= IActionable::Api.new
           @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id])
@@ -300,13 +300,12 @@ module Riaction
       end
     end
     
-    def riaction_update_profile(profile_type, old_id_type, new_id_type)
-      old_keys = riaction_profile_keys(profile_type, old_id_type)
-      new_keys = riaction_profile_keys(profile_type, new_id_type)
+    def riaction_update_profile(new_id_type)
+      old_keys = riaction_profile_keys
+      new_keys = riaction_profile_keys(old_keys[:profile_type], new_id_type)
       unless old_keys.empty? || new_keys.empty?
         @iactionable_api ||= IActionable::Api.new
         @iactionable_api.add_profile_identifier(old_keys[:profile_type], old_keys[:id_type], old_keys[:id], new_keys[:id_type], new_keys[:id])
-        new_keys
       else
         raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
       end

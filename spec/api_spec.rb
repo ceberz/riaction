@@ -8,8 +8,12 @@ describe IActionable::Api do
     @mock_response_item = mock("mock response item")
     
     IActionable::Connection.stub!(:new).and_return(@mock_connection)
+    IActionable::Settings.stub!(:new).and_return(@mock_settings)
+    
     @mock_response.stub!(:map).and_yield(@mock_response_item).and_return(@mock_response)
     @mock_response.stub!(:[]).and_return(@mock_response)
+    
+    IActionable::Api.init_settings(nil)
     
     @api = IActionable::Api.new
     @profile_type = "user"
@@ -19,9 +23,20 @@ describe IActionable::Api do
   
   describe "initialization" do
     it "should initialize the connection with the previously initialized settings" do
+      IActionable::Settings.should_receive(:new).once.with({:foo => "bar"})
       IActionable::Connection.should_receive(:new).once.with(@mock_settings)
-      IActionable::Api.init_settings(@mock_settings)
+      IActionable::Api.init_settings({:foo => "bar"})
       IActionable::Api.new
+    end
+    
+    describe "without having been pre-initialized with settings" do
+      before do
+        IActionable::Api.class_variable_set(:@@settings, nil)
+      end
+      
+      it "should raise a config error" do
+        lambda { IActionable::Api.new }.should raise_error(IActionable::ConfigError)
+      end
     end
   end
   

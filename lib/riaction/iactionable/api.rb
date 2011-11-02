@@ -3,16 +3,23 @@ require 'riaction/iactionable/settings.rb'
 require 'riaction/iactionable/objects.rb'
 
 module IActionable
+  
   class Api
     attr :connection
     @@settings = nil
   
     def initialize
-      @connection = IActionable::Connection.new(@@settings)
+      if @@settings
+        @connection = IActionable::Connection.new(@@settings)
+      else
+        raise IActionable::ConfigError.new("IActionable::Api cannot be initialized without credentials being set in IActionable::Api.init_settings()")
+      end
     end
   
-    def self.init_settings(settings)
-      @@settings = settings
+    def self.init_settings(values)
+      @@settings = IActionable::Settings.new(values)
+    rescue IActionable::ConfigError => e
+      raise e
     end
   
     def self.settings
