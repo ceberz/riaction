@@ -2,24 +2,25 @@ require 'spec_helper.rb'
 
 describe Riaction do
   class RiactionTestBase
-    include ActiveSupport::Callbacks
+    extend ActiveModel::Callbacks
     include Riaction
-    define_callbacks :after_create, :after_update, :after_destroy
+    
+    define_model_callbacks :create, :update, :destroy
     
     def self.base_class
       self
     end
     
     def initialize
-      run_callbacks(:after_create)
+      run_callbacks(:create)
     end
     
     def update
-      run_callbacks(:after_update)
+      run_callbacks(:update)
     end
     
     def destroy
-      run_callbacks(:after_destroy)
+      run_callbacks(:destroy)
     end
     
     def id
