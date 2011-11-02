@@ -20,7 +20,7 @@ module IActionable
       private
       
       def extract_many_as(key_values, field, klass)
-        if key_values.fetch(field).respond_to?(:inject)
+        if key_values.fetch(field, nil).respond_to?(:inject)
           loaded = []
           content = key_values.delete(field)
           content.each do |c|
@@ -28,7 +28,7 @@ module IActionable
           end
           loaded
         else
-          nil
+          []
         end
       end
     end

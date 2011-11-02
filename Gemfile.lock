@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    riaction (0.0.2)
+    riaction (0.0.3)
       activemodel
       activerecord
       faraday
