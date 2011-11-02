@@ -1,5 +1,5 @@
 namespace 'riaction' do
-  namespace 'rails'
+  namespace 'rails' do
     namespace 'list' do
       desc "List all registered events"
       task :events => :environment do
