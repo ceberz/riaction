@@ -17,7 +17,7 @@ The wrapper for IActionable's API is used internally by the rest of the gem, but
                                     :version => 3 )
     @api = IActionable::Api.new
 
-IActionable's API speaks in JSON, and here those responses are wrapped in simple objects where nesting and variable names are determined by [IActionable's documentation](http://www.http://iactionable.com/api/).  For example, here the wrapper is making a call to load a profile summary:
+IActionable's API speaks in JSON, and here those responses are wrapped in simple objects where nesting and variable names are determined by [IActionable's documentation](http://www.iactionable.com/api/).  For example, here the wrapper is making a call to load a profile summary:
 
     profile_summary = @api.get_profile_summary("user", "username", "zortnac", 10)
     profile_summary.display_name # => "Chris Eberz"
