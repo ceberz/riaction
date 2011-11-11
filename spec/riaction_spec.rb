@@ -86,6 +86,24 @@ describe Riaction do
         lambda { Riaction::EventPerformer.perform(:create_profile, "BadClass", @bad_instance.id) }.should raise_error(Riaction::NoEventDefined)
       end
     end
+    
+    describe "when the API raises an IActionable internal error" do
+      before do
+        @api.stub!(:get_profile_summary)
+        @api.stub!(:create_profile)
+        @api.stub!(:log_event).and_raise(IActionable::Error::Internal.new(nil))
+        Resque.stub!(:enqueue)
+      end
+      
+      it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
+        Resque.should_receive(:enqueue).exactly(Riaction.retry_attempts_for_internal_error).times.with(Riaction::EventPerformer, :create_profile, "MyClass", @instance.id, instance_of(Fixnum))
+        
+        (Riaction.retry_attempts_for_internal_error).times do |i|
+          lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, i) }.should_not raise_error
+        end
+        lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, Riaction.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
+      end
+    end
   end
   
   describe "profile generation" do
@@ -117,6 +135,24 @@ describe Riaction do
       it "should not attempt to create the profile, and raise an error" do
         @api.should_not_receive(:create_profile)
         lambda { Riaction::ProfileCreator.perform("BadClass", @instance.id) }.should raise_error(Riaction::NoProfileDefined)
+      end
+    end
+    
+    describe "when the API raises an IActionable internal error" do
+      before do
+        @instance = MyClass.new
+        MyClass.stub!(:find_by_id!).and_return(@instance)
+        @api.stub!(:create_profile).and_raise(IActionable::Error::Internal.new(nil))
+        Resque.stub!(:enqueue)
+      end
+      
+      it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
+        Resque.should_receive(:enqueue).exactly(Riaction.retry_attempts_for_internal_error).times.with(Riaction::ProfileCreator, "MyClass", @instance.id, instance_of(Fixnum))
+        
+        (Riaction.retry_attempts_for_internal_error).times do |i|
+          lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, i) }.should_not raise_error
+        end
+        lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, Riaction.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
       end
     end
   end
