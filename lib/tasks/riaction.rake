@@ -50,22 +50,20 @@ namespace 'riaction' do
         end
       end
 
-      desc "List all registered profiles"
-      task :profiles => :environment do
-        Dir.glob(File.join(RAILS_ROOT,"app","models","*.rb")).each do |rbfile|
-          require rbfile
-        end
-      
-        Riaction::PROFILE_CLASSES.each do |klass|
-          declaration = klass.riaction_profiles.first
-          puts "#{klass} defines the following profile type:"
-          puts " :#{declaration[0]}:"
-          puts "    With the following ID types and fields used as identifiers:"
-          declaration[1].each_pair do |id_type, id|
-            puts "      :#{id_type} => :#{id}"
+      desc "List all achievments defined on IActionable"
+      task :achievements => :environment do
+        api = IActionable::Api.new
+        achievements = api.get_achievements
+        unless achievements.empty?
+          achievements.each do |achievement|
+            puts achievement.key
+            puts "  Name: #{achievement.name}"
+            puts "  Image: #{achievement.image_url}"
+            puts "  Description: #{achievement.description}"
+            puts "-------------------------------------------------------"
           end
-          puts ""
-          puts "-------------------------------------------------------"
+        else
+          puts "No achievements defined."
         end
       end
     end
