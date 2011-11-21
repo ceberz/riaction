@@ -1,0 +1,10 @@
+defaults: &defaults
+  version: 3
+
+<% credentials.each do |credential| %>
+<%= credential[:env] %>:
+  <<: *defaults
+  app_key: "<%= credential[:app_key] %>"
+  api_key: "<%= credential[:api_key] %>"
+    
+<% end %>  
