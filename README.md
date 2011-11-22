@@ -29,12 +29,11 @@ IActionable's API speaks in JSON, and here those responses are wrapped in simple
 
 While the API wrapper in riaction can be used directly (and I ought just pull it out as a separate gem), the rest of riaction consists of an "acts-as" style interface for your application's ActiveRecord models that leverages the API wrapper to associate your models with IActionable profiles and to have IActionable event logging be driven by your models' CRUD actions.  riaction relies on Resque for tasking all of the requests made to IActionable's service.
 
-### Initializing the API Wrapper ###
+### Generators ###
 
-Just as above, before the wrapper can be used (either directly or by the riaction interface) it needs to be initialized with your IActionable credentials.  This can be done in a small rails initializer:
+Riaction comes with a generator for creating a YAML file to contain your credentials for each environment of your application.  The YAML file is necessary for riaction to run correctly in your rails app.
 
-    I_ACTIONABLE_CREDS = (YAML.load_file("#{::Rails.root.to_s}/config/i_actionable.yml")[::Rails.env]).symbolize_keys!
-    IAction::Api.init_settings(I_ACTIONABLE_CREDS)
+    rails g riaction development:12345:abcde production:54321:edcba
 
 ### Declaring A Model As A Profile ###
 
