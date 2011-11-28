@@ -1,7 +1,3 @@
-require 'riaction/iactionable/objects/i_actionable_object.rb'
-require 'riaction/iactionable/objects/leaderboard.rb'
-
-
 module IActionable
   module Objects
     class LeaderboardReport < IActionableObject

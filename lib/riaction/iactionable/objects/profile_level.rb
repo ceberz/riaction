@@ -1,6 +1,3 @@
-require 'riaction/iactionable/objects/i_actionable_object.rb'
-require 'riaction/iactionable/objects/level.rb'
-
 module IActionable
   module Objects
     class ProfileLevel < IActionableObject

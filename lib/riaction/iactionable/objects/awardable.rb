@@ -1,5 +1,3 @@
-require 'riaction/iactionable/objects/progress.rb'
-
 module IActionable
   module Objects
     module Awardable

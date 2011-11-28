@@ -1,7 +1,3 @@
-require 'riaction/iactionable/objects/i_actionable_object.rb'
-require 'riaction/iactionable/objects/profile_level.rb'
-require 'riaction/iactionable/objects/point_type.rb'
-
 module IActionable
   module Objects
     class ProfilePoints < IActionableObject

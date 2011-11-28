@@ -3,4 +3,21 @@ module IActionable
   end
 end
 
-Dir.glob(File.dirname(__FILE__) + '/objects/*') {|file| require file}
+require 'riaction/iactionable/objects/i_actionable_object.rb'
+require 'riaction/iactionable/objects/progress.rb'
+require 'riaction/iactionable/objects/awardable.rb'
+
+IActionable::Objects::IActionableObject.send(:include, IActionable::Objects::Awardable)
+
+require 'riaction/iactionable/objects/achievement.rb'
+require 'riaction/iactionable/objects/challenge.rb'
+require 'riaction/iactionable/objects/goal.rb'
+require 'riaction/iactionable/objects/identifier.rb'
+require 'riaction/iactionable/objects/leaderboard.rb'
+require 'riaction/iactionable/objects/leaderboard_report.rb'
+require 'riaction/iactionable/objects/level_type.rb'
+require 'riaction/iactionable/objects/level.rb'
+require 'riaction/iactionable/objects/point_type.rb'
+require 'riaction/iactionable/objects/profile_level.rb'
+require 'riaction/iactionable/objects/profile_points.rb'
+require 'riaction/iactionable/objects/profile_summary.rb'

@@ -34,7 +34,3 @@ module IActionable
     end
   end
 end
-
-require "riaction/iactionable/objects/awardable.rb"
-
-IActionable::Objects::IActionableObject.send(:include, IActionable::Objects::Awardable)
