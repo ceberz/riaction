@@ -1,5 +1,15 @@
 # CHANGELOG #
 
+## 0.2.1 ##
+
+* Fixed problematic load order of the IActionable objects
+
+
+## 0.2.0 ##
+
+* Generator added to create YAML file for IActionable credentials
+
+
 ## 0.1.1 ##
 
 * Rake task `riaction:rails:list:achievements` produces formatted output of all achievements defined on IActionable
