@@ -3,7 +3,7 @@ require 'spec_helper.rb'
 describe Riaction do
   class RiactionTestBase
     extend ActiveModel::Callbacks
-    include Riaction
+    extend Riaction::Riaction
     
     define_model_callbacks :create, :update, :destroy
     
@@ -32,6 +32,74 @@ describe Riaction do
     @api = mock("mocked IActionable API")
     IActionable::Api.stub!(:new).and_return(@api)
     Resque.stub!(:enqueue)
+  end
+  
+  describe "using riaction" do    
+    describe "to define a profile" do
+      before do
+        class RiactionClass < RiactionTestBase
+        end
+      end
+      
+      describe "the first time" do
+        it "should set up the profile info" do
+          RiactionClass.riaction_profile?.should be_false
+          RiactionClass.class_eval do
+            riaction :profile, :type => :user, :custom => :id
+          end
+          RiactionClass.riaction_profile?.should be_true
+          hash_including(:custom => :id).should == RiactionClass.riaction_profiles[:user]
+        end
+      end
+      
+      describe "a second time" do
+        before do
+          RiactionClass.class_eval do
+            riaction :profile, :type => :user, :custom => :id
+          end
+        end
+        it "should not try to invoke any internal config methods" do
+          RiactionClass.should_not_receive(:define_profile)
+          RiactionClass.should_not_receive(:include)
+          RiactionClass.should_not_receive(:after_create)
+          RiactionClass.class_eval do
+            riaction :profile, :type => :user, :custom => :id
+          end
+        end
+      end
+    end
+    
+    describe "to define an event" do
+      before do
+        class RiactionClass < RiactionTestBase
+        end
+      end
+
+      describe "the first time" do
+        it "should set up the event info" do
+          RiactionClass.riaction_defines_event?(:create_profile).should be_false
+          RiactionClass.class_eval do
+            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
+          end
+          RiactionClass.riaction_defines_event?(:create_profile).should be_true
+        end
+      end
+
+      describe "a second time" do
+        before do
+          RiactionClass.class_eval do
+            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
+          end
+        end
+        it "should not try to invoke any internal config methods" do
+          RiactionClass.should_not_receive(:define_event)
+          RiactionClass.should_not_receive(:include)
+          RiactionClass.class_eval do
+            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
+          end
+        end
+      end
+    end
   end
   
   describe "logging events" do
@@ -96,12 +164,12 @@ describe Riaction do
       end
       
       it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
-        Resque.should_receive(:enqueue).exactly(Riaction.retry_attempts_for_internal_error).times.with(Riaction::EventPerformer, :create_profile, "MyClass", @instance.id, instance_of(Fixnum))
+        Resque.should_receive(:enqueue).exactly(Riaction::Constants.retry_attempts_for_internal_error).times.with(Riaction::EventPerformer, :create_profile, "MyClass", @instance.id, instance_of(Fixnum))
         
-        (Riaction.retry_attempts_for_internal_error).times do |i|
+        (Riaction::Constants.retry_attempts_for_internal_error).times do |i|
           lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, i) }.should_not raise_error
         end
-        lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, Riaction.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
+        lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, Riaction::Constants.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
       end
     end
   end
@@ -147,12 +215,12 @@ describe Riaction do
       end
       
       it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
-        Resque.should_receive(:enqueue).exactly(Riaction.retry_attempts_for_internal_error).times.with(Riaction::ProfileCreator, "MyClass", @instance.id, instance_of(Fixnum))
+        Resque.should_receive(:enqueue).exactly(Riaction::Constants.retry_attempts_for_internal_error).times.with(Riaction::ProfileCreator, "MyClass", @instance.id, instance_of(Fixnum))
         
-        (Riaction.retry_attempts_for_internal_error).times do |i|
+        (Riaction::Constants.retry_attempts_for_internal_error).times do |i|
           lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, i) }.should_not raise_error
         end
-        lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, Riaction.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
+        lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, Riaction::Constants.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
       end
     end
   end

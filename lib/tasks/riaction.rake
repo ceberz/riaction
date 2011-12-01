@@ -7,7 +7,8 @@ namespace 'riaction' do
           require rbfile
         end
       
-        Riaction::EVENT_LOGGING_CLASSES.each do |klass|
+        Riaction::EVENT_LOGGING_CLASSES.each do |class_name|
+          klass = class_name.constantize
           puts "#{klass} defines the following events:"
           klass.riaction_events.each_pair do |name, deets|
             puts " :#{name}:"
@@ -75,7 +76,8 @@ namespace 'riaction' do
           require rbfile
         end
       
-        Riaction::PROFILE_CLASSES.each do |klass|
+        Riaction::PROFILE_CLASSES.each do |class_name|
+          klass = class_name.constantize
           begin
             klass.all.each do |obj|
               declaration = klass.riaction_profiles.first
