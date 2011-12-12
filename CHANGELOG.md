@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 0.4.0 ##
+
+* Adding calls to the profile interface for fetching and updating points
+
+
 ## 0.3.0 ##
 
 * re-organized module and got rid of a memory leak that showed up in Rails apps running with cache\_classes set to false

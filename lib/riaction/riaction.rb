@@ -289,6 +289,30 @@ module Riaction
       rescue IActionable::Error::BadRequest => e
         nil
       end
+      
+      def riaction_profile_points(point_type)
+        keys = riaction_profile_keys
+        unless keys.empty?
+          @iactionable_api ||= IActionable::Api.new
+          @iactionable_api.get_profile_points(keys[:profile_type], keys[:id_type], keys[:id], point_type)
+        else
+          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
+        end
+      rescue IActionable::Error::BadRequest => e
+        nil
+      end
+      
+      def riaction_update_profile_points(point_type, amount, reason="")
+        keys = riaction_profile_keys
+        unless keys.empty?
+          @iactionable_api ||= IActionable::Api.new
+          @iactionable_api.update_profile_points(keys[:profile_type], keys[:id_type], keys[:id], point_type, amount, reason)
+        else
+          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
+        end
+      rescue IActionable::Error::BadRequest => e
+        nil
+      end
     end
   end
 end
