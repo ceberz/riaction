@@ -1,9 +1,12 @@
 # CHANGELOG #
 
+## 0.4.1 ##
+
+* Fixed NameError bug in tasks.
+
 ## 0.4.0 ##
 
 * Adding calls to the profile interface for fetching and updating points
-
 
 ## 0.3.0 ##
 
@@ -13,11 +16,9 @@
 
 * Fixed problematic load order of the IActionable objects
 
-
 ## 0.2.0 ##
 
 * Generator added to create YAML file for IActionable credentials
-
 
 ## 0.1.1 ##
 
