@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 0.4.2 ##
+
+* Fixed NameError bug in tasks. For realsies.
+
 ## 0.4.1 ##
 
 * Fixed NameError bug in tasks.

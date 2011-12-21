@@ -12,7 +12,7 @@ namespace 'riaction' do
           puts "#{klass} defines the following events:"
           klass.riaction_events.each_pair do |name, deets|
             puts " :#{name}:"
-            if Riaction.crud_actions.include? deets[:trigger]
+            if Riaction::Constants.crud_actions.include? deets[:trigger]
               puts "    Trigger: Fired on ActiveRecord after_#{deets[:trigger]} callback"
             else
               puts "    Trigger: By calling :trigger_#{deets[:trigger]}!"
