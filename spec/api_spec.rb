@@ -76,7 +76,7 @@ describe IActionable::Api do
         end
         
         it "should be the correct IActionable API call" do
-          @mock_connection.should_receive(:with_params).with({:achievement_count => @achievement_count}).and_return(@mock_connection)
+          @mock_connection.should_receive(:with_params).with({:achievementCount => @achievement_count}).and_return(@mock_connection)
           @api.get_profile_summary(@profile_type, @id_type, @id, @achievement_count)
         end
       end
@@ -107,7 +107,7 @@ describe IActionable::Api do
         end
         
         it "should be the correct IActionable API call" do
-          @mock_connection.should_receive(:with_params).with({:display_name => @display_name}).and_return(@mock_connection)
+          @mock_connection.should_receive(:with_params).with({:displayName => @display_name}).and_return(@mock_connection)
           @api.create_profile(@profile_type, @id_type, @id, @display_name).should == @mock_response
         end
       end

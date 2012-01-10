@@ -247,13 +247,8 @@ module Riaction
       def riaction_create_profile
         keys = riaction_profile_keys
         unless keys.empty?
-          existing = riaction_profile_summary
-          unless existing
-            @iactionable_api ||= IActionable::Api.new
-            @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id], riaction_profile_display_name)
-          else
-            existing
-          end
+          @iactionable_api ||= IActionable::Api.new
+          @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id], riaction_profile_display_name)
         else
           raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
         end

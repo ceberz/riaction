@@ -40,14 +40,14 @@ module IActionable
   
     def get_profile_summary(profile_type, id_type, id, achievement_count = nil)
       request = @connection.request.with_app_key.to("/#{profile_type}/#{id_type}/#{id}")
-      request.with_params(:achievement_count => achievement_count) unless achievement_count.blank?
+      request.with_params(:achievementCount => achievement_count) unless achievement_count.blank?
       response = request.get
       IActionable::Objects::ProfileSummary.new(response)
     end
   
     def create_profile(profile_type, id_type, id, display_name = nil)
       request = @connection.request.with_app_key.with_api_key.to("/#{profile_type}/#{id_type}/#{id}")
-      request.with_params(:display_name => display_name) unless display_name.blank?
+      request.with_params(:displayName => display_name) unless display_name.blank?
       request.post
     end
     alias_method :update_profile, :create_profile

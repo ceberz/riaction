@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 0.5.1 ##
+
+* Fixed bug preventing profile updates.
+
 ## 0.5.0 ##
 
 * Added ability to specify a display name for a profile.  new feature; all existing features work the same.
