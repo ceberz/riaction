@@ -48,7 +48,7 @@ describe Riaction do
             riaction :profile, :type => :user, :custom => :id
           end
           RiactionClass.riaction_profile?.should be_true
-          hash_including(:custom => :id).should == RiactionClass.riaction_profiles[:user]
+          hash_including(:custom => :id).should == RiactionClass.riaction_profiles[:user][:identifiers]
         end
       end
       
@@ -280,7 +280,7 @@ describe Riaction do
         super
       end
       
-      riaction :profile, :type => :user, :custom => :id, :username => :name
+      riaction :profile, :type => :user, :display_name => :full_name, :custom => :id, :username => :name
       
       def id
         42
@@ -288,6 +288,10 @@ describe Riaction do
       
       def name
         "zortnac"
+      end
+      
+      def full_name
+        "zortnac pah"
       end
     end
     
@@ -312,9 +316,9 @@ describe Riaction do
       end
       
       describe "for creating a profile" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
+        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance, including the display name" do
           @api.stub!(:get_profile_summary).and_return(nil)
-          @api.should_receive(:create_profile).once.with("user", "custom", @instance.id.to_s).and_return(@mock_response)
+          @api.should_receive(:create_profile).once.with("user", "custom", @instance.id.to_s, @instance.full_name).and_return(@mock_response)
           @instance.riaction_create_profile.should == @mock_response
         end
       end

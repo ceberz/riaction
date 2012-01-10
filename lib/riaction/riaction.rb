@@ -81,9 +81,9 @@ module Riaction
           true
         end
       end
-    
+      
       # store the profile
-      riaction_profiles.store(type, fields)
+      riaction_profiles.store(type, {:display_name_method => fields.delete(:display_name), :identifiers => fields})
     end
   
     def riaction_profile?
@@ -182,10 +182,10 @@ module Riaction
       def riaction_profile_keys(profile_type=nil, id_type=nil)
         if self.class.riaction_profiles.size > 0
           if profile_type && self.class.riaction_profiles.has_key?(profile_type)
-            ids = self.class.riaction_profiles.fetch(profile_type)
+            ids = self.class.riaction_profiles.fetch(profile_type)[:identifiers]
           else
             profile_type = self.class.riaction_profiles.first[0]
-            ids = self.class.riaction_profiles.first[1]
+            ids = self.class.riaction_profiles.first[1][:identifiers]
           end
       
           if id_type && ids.has_key?(id_type)
@@ -198,6 +198,34 @@ module Riaction
         end
       rescue KeyError, NoMethodError => e
         {}
+      end
+      
+      def riaction_profile_display_name(profile_type=nil)
+        if self.class.riaction_profiles.size > 0
+          if profile_type && self.class.riaction_profiles.has_key?(profile_type)
+            method = self.class.riaction_profiles.fetch(profile_type)[:display_name_method]
+          else
+            method = self.class.riaction_profiles.first[1][:display_name_method]
+          end
+      
+          if method
+            if method.kind_of? Symbol
+              begin
+                self.send(method)
+              rescue NoMethodError => e
+                nil
+              end
+            else
+              nil
+            end
+          else
+            nil
+          end
+        else
+          nil
+        end
+      rescue KeyError, NoMethodError => e
+        nil
       end
     
       #################
@@ -222,7 +250,7 @@ module Riaction
           existing = riaction_profile_summary
           unless existing
             @iactionable_api ||= IActionable::Api.new
-            @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id])
+            @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id], riaction_profile_display_name)
           else
             existing
           end

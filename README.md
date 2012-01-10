@@ -52,6 +52,13 @@ Models in your application may declare themselves as profiles that exist on IAct
   
 Here, the class User declares itself as a profile of type "player", identifiable by two of IActionable's supported identifier types, username and custom.  The values of these identifiers are the fields nickname and id, respectively, and can be any method that an instance of the class responds to.  When a class declares itself as a riaction profile, an after_create callback will be added to create the profile on IActionable with the identifiers declared in the class.
 
+An optional display name can be given, which should be a method that the object responds to:
+
+    class User < ActiveRecord::Base
+      riaction :profile, :type => :player, :username => :nickname, :custom => :id, :display_name => :nickname
+    end
+  
+
 #### Profile Instance Methods ####
 
 Classes that declare themselves as IActionable profiles are given instance methods that tie in to the IActionable API, as many uses of the API treat the profile as a top-level resource.

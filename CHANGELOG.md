@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 0.5.0 ##
+
+* Added ability to specify a display name for a profile.  new feature; all existing features work the same.
+
+
 ## 0.4.2 ##
 
 * Fixed NameError bug in tasks. For realsies.
