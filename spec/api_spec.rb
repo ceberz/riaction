@@ -6,6 +6,7 @@ describe IActionable::Api do
     @mock_connection = mock("connection")
     @mock_response = mock("mock response")
     @mock_response_item = mock("mock response item")
+    @mock_object = mock("mock object")
     
     IActionable::Connection.stub!(:new).and_return(@mock_connection)
     IActionable::Settings.stub!(:new).and_return(@mock_settings)
@@ -187,12 +188,12 @@ describe IActionable::Api do
     end
   end
   
-  [ [:achievements, IActionable::Objects::Achievement],
-    [:challenges, IActionable::Objects::Challenge],
-    [:goals, IActionable::Objects::Goal]].each do |type|
+  [ [:achievements, IActionable::Objects::ProfileAchievements, IActionable::Objects::Achievement],
+    [:challenges, IActionable::Objects::ProfileChallenges, IActionable::Objects::Challenge],
+    [:goals, IActionable::Objects::ProfileGoals, IActionable::Objects::Goal]].each do |type|
     describe "loading all #{type} for a profile" do
       before do 
-        type[1].stub!(:new)
+        type[1].stub!(:new).and_return(@mock_object)
         @mock_connection.should_receive(:request).once.ordered.and_return(@mock_connection)
         @mock_connection.should_receive(:with_app_key).and_return(@mock_connection)
         @mock_connection.should_receive(:get).and_return(@mock_response)
@@ -206,8 +207,8 @@ describe IActionable::Api do
         
         it "should return as the proper object type" do
           @mock_connection.stub!(:to).and_return(@mock_connection)
-          type[1].should_receive(:new).once.with(@mock_response_item)
-          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, :available).should == @mock_response
+          type[1].should_receive(:new).once.with(@mock_response).and_return(@mock_object)
+          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, :available).should == @mock_object
         end
       end
       
@@ -219,8 +220,8 @@ describe IActionable::Api do
         
         it "should return as the proper object type" do
           @mock_connection.stub!(:to).and_return(@mock_connection)
-          type[1].should_receive(:new).once.with(@mock_response_item)
-          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, :completed).should == @mock_response
+          type[1].should_receive(:new).once.with(@mock_response).and_return(@mock_object)
+          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, :completed).should == @mock_object
         end
       end
       
@@ -230,11 +231,31 @@ describe IActionable::Api do
           @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, nil)
         end
         
-        it "should return as the proper object type, in a hash with both filter types" do
+        it "should return as the proper object type" do
           @mock_connection.stub!(:to).and_return(@mock_connection)
-          type[1].should_receive(:new).twice.with(@mock_response_item)
-          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, nil).should == {:available => @mock_response, :completed => @mock_response}
+          type[1].should_receive(:new).once.with(@mock_response).and_return(@mock_object)
+          @api.send("get_profile_#{type[0]}", @profile_type, @id_type, @id, nil).should == @mock_object
         end
+      end
+    end
+    
+    describe "loading all #{type[0]} outside of a profile context" do
+      before do
+        type[2].stub!(:new).and_return(@mock_object)
+        @mock_connection.should_receive(:request).once.ordered.and_return(@mock_connection)
+        @mock_connection.should_receive(:with_app_key).and_return(@mock_connection)
+        @mock_connection.should_receive(:get).and_return(@mock_response)
+      end
+      
+      it "should make the correct IActionable API all" do
+        @mock_connection.should_receive(:to).once.with("/#{type[0]}").and_return(@mock_connection)
+        @api.send("get_#{type[0]}")
+      end
+      
+      it "should return as the proper object type" do
+        @mock_connection.stub!(:to).and_return(@mock_connection)
+        type[2].should_receive(:new).once.with(@mock_response_item).and_return(@mock_object)
+        @api.send("get_#{type[0]}").should == @mock_response
       end
     end
   end
@@ -273,16 +294,21 @@ describe IActionable::Api do
   
   describe "notifications" do
     it "should make the correct IActionable API all" do
-      IActionable::Objects::Achievement.stub!(:new)
-      IActionable::Objects::Challenge.stub!(:new)
-      IActionable::Objects::Goal.stub!(:new)
-      IActionable::Objects::Level.stub!(:new)
-      IActionable::Objects::ProfilePoints.stub!(:new)
+      IActionable::Objects::ProfileNotifications.stub!(:new)
       @mock_connection.should_receive(:request).once.ordered.and_return(@mock_connection)
       @mock_connection.should_receive(:with_app_key).and_return(@mock_connection)
       @mock_connection.should_receive(:to).with("/#{@profile_type}/#{@id_type}/#{@id}/notifications").and_return(@mock_connection)
       @mock_connection.should_receive(:get).and_return(@mock_response)
       @api.get_profile_notifications(@profile_type, @id_type, @id)
+    end
+    
+    it "should return with the corect object" do
+      @mock_connection.stub!(:request).and_return(@mock_connection)
+      @mock_connection.stub!(:with_app_key).and_return(@mock_connection)
+      @mock_connection.stub!(:to).and_return(@mock_connection)
+      @mock_connection.stub!(:get).and_return(@mock_response)
+      IActionable::Objects::ProfileNotifications.should_receive(:new).once.with(@mock_response).and_return(@mock_response)
+      @api.get_profile_notifications(@profile_type, @id_type, @id).should == @mock_response
     end
   end
 end

@@ -8,6 +8,7 @@ module IActionable
       module ClassMethods
         def awardable
           attr_accessor :award_date
+          attr_accessor :original_award_date
           attr_accessor :progress
           include IActionable::Objects::Awardable::InstanceMethods
         end
@@ -18,7 +19,7 @@ module IActionable
           @progress = extract_many_as(key_values, "Progress", IActionable::Objects::Progress)
           # convert the miliseconds within the date string to seconds (per ruby)
           # "/Date(1275706032317-0600)/" => "1275706032-0600"
-          @award_date = key_values.delete("AwardDate")
+          @original_award_date = @award_date = key_values.delete("AwardDate")
           @award_date = IActionableObject.timestamp_to_seconds(@award_date) unless @award_date.blank?
         end
       
@@ -35,6 +36,13 @@ module IActionable
         def awarded_on
           # bug in ruby 1.9.2 where Time.strptime does not support seconds-since-epoch format, but Date.strptime does, so we'll use that for now
           Date.strptime(@award_date, "%s%z").to_time unless @award_date.blank?
+        end
+        
+        def awardable_hash
+          {
+            "AwardDate" => @original_award_date,
+            "Progress" => @progress.map{|prog| prog.to_hash}
+          }
         end
       end
     end

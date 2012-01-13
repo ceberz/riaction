@@ -81,20 +81,12 @@ module IActionable
       case filter_type
       when :completed
         request.to("/#{profile_type}/#{id_type}/#{id}/achievements/Completed")
-        response = request.get
-        response.map{|achievement_json| IActionable::Objects::Achievement.new(achievement_json)}
       when :available
         request.to("/#{profile_type}/#{id_type}/#{id}/achievements/Available")
-        response = request.get
-        response.map{|achievement_json| IActionable::Objects::Achievement.new(achievement_json)}
       else
         request.to("/#{profile_type}/#{id_type}/#{id}/achievements")
-        response = request.get
-        {
-          :available => response["Available"].map{|achievement_json| IActionable::Objects::Achievement.new(achievement_json)},
-          :completed => response["Completed"].map{|achievement_json| IActionable::Objects::Achievement.new(achievement_json)}
-        }
       end
+      IActionable::Objects::ProfileAchievements.new(request.get)
     end
   
     def get_achievements()
@@ -113,20 +105,12 @@ module IActionable
       case filter_type
       when :completed
         request.to("/#{profile_type}/#{id_type}/#{id}/challenges/Completed")
-        response = request.get
-        response.map{|challenge_json| IActionable::Objects::Challenge.new(challenge_json)}
       when :available
         request.to("/#{profile_type}/#{id_type}/#{id}/challenges/Available")
-        response = request.get
-        response.map{|challenge_json| IActionable::Objects::Challenge.new(challenge_json)}
       else
         request.to("/#{profile_type}/#{id_type}/#{id}/challenges")
-        response = request.get
-        {
-          :available => response["Available"].map{|challenge_json| IActionable::Objects::Challenge.new(challenge_json)},
-          :completed => response["Completed"].map{|challenge_json| IActionable::Objects::Challenge.new(challenge_json)}
-        }
       end
+      IActionable::Objects::ProfileChallenges.new(request.get)
     end
   
     def get_challenges()
@@ -145,20 +129,12 @@ module IActionable
       case filter_type
       when :completed
         request.to("/#{profile_type}/#{id_type}/#{id}/goals/Completed")
-        response = request.get
-        response.map{|goal_json| IActionable::Objects::Goal.new(goal_json)}
       when :available
         request.to("/#{profile_type}/#{id_type}/#{id}/goals/Available")
-        response = request.get
-        response.map{|goal_json| IActionable::Objects::Goal.new(goal_json)}
       else
         request.to("/#{profile_type}/#{id_type}/#{id}/goals")
-        response = request.get
-        {
-          :available => response["Available"].map{|goal_json| IActionable::Objects::Goal.new(goal_json)},
-          :completed => response["Completed"].map{|goal_json| IActionable::Objects::Goal.new(goal_json)}
-        }
       end
+      IActionable::Objects::ProfileGoals.new(request.get)
     end
   
     def get_goals()
@@ -188,22 +164,7 @@ module IActionable
   
     def get_profile_notifications(profile_type, id_type, id)
       response = @connection.request.with_app_key.to("/#{profile_type}/#{id_type}/#{id}/notifications").get
-      {
-        :achievements => {
-          :available => response["Achievements"]["Available"].map{|a| IActionable::Objects::Achievement.new(a)},
-          :completed => response["Achievements"]["Completed"].map{|a| IActionable::Objects::Achievement.new(a)}
-        },
-        :challenges => {
-          :available => response["Challenges"]["Available"].map{|c| IActionable::Objects::Challenge.new(c)},
-          :completed => response["Challenges"]["Completed"].map{|c| IActionable::Objects::Challenge.new(c)}
-        },
-        :goals => {
-          :available => response["Goals"]["Available"].map{|g| IActionable::Objects::Goal.new(g)},
-          :completed => response["Goals"]["Completed"].map{|g| IActionable::Objects::Goal.new(g)}
-        },
-        :levels => response["Levels"].map{|l| IActionable::Objects::Level.new(l)},
-        :points => response["Points"].map{|p| IActionable::Objects::ProfilePoints.new(p)}
-      }
+      IActionable::Objects::ProfileNotifications.new(response)
     end
   end
 end

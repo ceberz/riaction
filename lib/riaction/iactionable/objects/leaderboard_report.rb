@@ -14,6 +14,17 @@ module IActionable
         @profiles = extract_many_as(key_values, "Profiles", IActionable::Objects::ProfileSummary)
         super(key_values)
       end
+      
+      def to_hash
+        {
+          "PageCount" => @page_count,
+          "PageNumber" => @page_number,
+          "TotalCount" => @total_count,
+          "Leaderboard" => @leaderboard.to_hash,
+          "PointType" => @point_type.to_hash,
+          "Profiles" => @profiles.map{|profile| profile.to_hash}
+        }
+      end
     end
   end
 end

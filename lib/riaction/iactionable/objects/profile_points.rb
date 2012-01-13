@@ -12,6 +12,18 @@ module IActionable
         @point_type = IActionable::Objects::PointType.new(key_values.delete("PointType"))
         super(key_values)
       end
+      
+      def to_hash
+        hash = {
+          "Level" => @level.nil? ? nil : @level.to_hash,
+          "PointType" => @point_type.to_hash,
+          "Points" => @points,
+          "Reason" => @reason
+        }
+        hash.delete "Level" if @level.nil?
+        hash.delete "Reason" if @reason.nil?
+        hash
+      end
     end
   end
 end

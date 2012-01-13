@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 1.0.0 ##
+
+* API return values are now all objects, not mix of key/value pairs and objects.
+* Objects turn themselves back in to original key/value data from IActionable.
+
 ## 0.5.1 ##
 
 * Fixed bug preventing profile updates.

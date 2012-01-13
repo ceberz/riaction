@@ -11,6 +11,17 @@ module IActionable
         initialize_awardable(key_values)
         super(key_values)
       end
+      
+      def to_hash
+        hash = {
+          "Key" => @key,
+          "Description" => @description,
+          "Name" => @name
+        }
+        hash.merge!(awardable_hash) unless @progress.empty?
+        hash.delete("AwardDate") if @award_date.nil?
+        hash
+      end
     end
   end
 end
