@@ -8,27 +8,6 @@ riaction provides both a ruby wrapper for IActionable's restful API and an "acts
 
     gem install riaction
 
-## API Wrapper ##
-
-The wrapper for IActionable's API is used internally by the rest of the gem, but also may be used directly if desired.  IActionable's API is restful, and this wrapper takes each resource and HTTP verb of that API and wraps them as a method that takes arguments that match to the resource and query or body parameters.  Before the wrapper can be instantiated or used it must be pre-initialized with your IActionable credentials and version number (IActionable supports older versions but recommends staying up to date):
-
-    IActionable::Api.init_settings( :app_key => "12345",
-                                    :api_key => "abcde",
-                                    :version => 3 )
-    @api = IActionable::Api.new
-
-IActionable's API speaks in JSON, and here those responses are wrapped in simple objects where nesting and variable names are determined by [IActionable's documentation](http://www.iactionable.com/api/).  For example, here the wrapper is making a call to load a profile summary:
-
-    profile_summary = @api.get_profile_summary("user", "username", "zortnac", 10)
-    profile_summary.display_name # => "Chris Eberz"
-    profile_summary.identifiers.first # => instance of IActionable::Objects::Identifier
-    profile_summary.identifiers.first.id_type # => "username"
-    profile_summary.identifiers.first.id # => "zortnac"
-  
-## Using riaction In Rails ##
-
-While the API wrapper in riaction can be used directly (and I ought just pull it out as a separate gem), the rest of riaction consists of an "acts-as" style interface for your application's ActiveRecord models that leverages the API wrapper to associate your models with IActionable profiles and to have IActionable event logging be driven by your models' CRUD actions.  riaction relies on Resque for tasking all of the requests made to IActionable's service.
-
 ### Generators ###
 
 Riaction comes with a generator for creating a YAML file to contain your credentials for each environment of your application.  The YAML file is necessary for riaction to run correctly in your rails app.

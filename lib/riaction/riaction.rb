@@ -1,4 +1,3 @@
-require 'riaction/iactionable/api'
 require "active_support"
 require "active_record"
 require 'riaction/event_performer'

@@ -22,9 +22,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rspec", ">= 2.6"
   
   s.add_runtime_dependency "rake"
-  s.add_runtime_dependency "faraday"
-  s.add_runtime_dependency "faraday-stack"
   s.add_runtime_dependency "activerecord", ">= 3.0.0"
   s.add_runtime_dependency "activesupport", ">= 3.0.0"
   s.add_runtime_dependency "resque"
+  s.add_runtime_dependency "ruby-iactionable", ">= 0.0.2"
 end

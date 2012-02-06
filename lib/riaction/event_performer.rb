@@ -1,4 +1,3 @@
-require 'riaction/iactionable/api'
 require 'riaction/constants'
 require "resque"
 
