@@ -6,13 +6,21 @@ module Riaction
     @queue = :riaction_profile_creator
   
     def self.perform(klass_name, id, attempt=0)
-      if klass_name.constantize.riaction_profile?      
+      if klass_name.constantize.riactionary? && 
+        klass_name.constantize.riaction_profile? &&
+        klass_name.constantize.riaction_profile_types_defined > 0
+        record = klass_name.constantize.find_by_id!(id)
         iactionable_api = IActionable::Api.new
-        profile_object = klass_name.constantize.find_by_id!(id)
-        profile_keys = profile_object.riaction_profile_keys
-        iactionable_api.create_profile(profile_keys[:profile_type], profile_keys[:id_type], profile_keys[:id])
+        record.riaction_profile_keys.each_pair do |profile_type, ids|
+          identifiers = ids.to_a
+          first_defined = identifiers.shift
+          iactionable_api.create_profile(profile_type.to_s, first_defined.first.to_s, first_defined.last.to_s, nil)
+          identifiers.each do |identifier|
+            iactionable_api.add_profile_identifier(profile_type.to_s, first_defined.first.to_s, first_defined.last.to_s, identifier.first.to_s, identifier.last.to_s)
+          end
+        end
       else
-        raise NoProfileDefined.new
+        raise ::Riaction::RuntimeError.new("#{klass_name} does not define any riaction profiles")
       end
     rescue ActiveRecord::RecordNotFound => e
       # event_object no longer exists; no means to recover

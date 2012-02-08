@@ -1,362 +1,906 @@
 require 'spec_helper.rb'
 
-describe Riaction do
-  class RiactionTestBase
-    extend ActiveModel::Callbacks
-    extend Riaction::Riaction
-    
-    define_model_callbacks :create, :update, :destroy
-    
-    def self.base_class
-      self
-    end
-    
-    def initialize
-      run_callbacks(:create)
-    end
-    
-    def update
-      run_callbacks(:update)
-    end
-    
-    def destroy
-      run_callbacks(:destroy)
-    end
-    
-    def id
-      42
-    end
-  end
+ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS 'users'")
+ActiveRecord::Base.connection.create_table(:users) do |t|
+  t.string :name
+  t.string :email
+  t.timestamps
+end
+
+class User < ActiveRecord::Base
+  extend Riaction::Riaction::ClassMethods
   
+  has_many :comments, :dependent => :destroy
+end
+
+ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS 'comments'")
+ActiveRecord::Base.connection.create_table(:comments) do |t|
+  t.belongs_to :user
+  t.string :content
+end
+
+class Comment < ActiveRecord::Base
+  extend Riaction::Riaction::ClassMethods
+  
+  belongs_to :user
+end
+
+ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS 'sessions'")
+ActiveRecord::Base.connection.create_table(:sessions) do |t|
+  t.belongs_to :user
+end
+
+class Session < ActiveRecord::Base
+  extend Riaction::Riaction::ClassMethods
+  
+  belongs_to :user
+end
+
+describe "Riaction" do
   before do
+    ActiveRecord::Base.connection.increment_open_transactions
+    ActiveRecord::Base.connection.begin_db_transaction
+    
     @api = mock("mocked IActionable API")
     IActionable::Api.stub!(:new).and_return(@api)
-    Resque.stub!(:enqueue)
+    Resque.stub(:enqueue).and_return true
+    
+    User.reset_riaction if User.riactionary?
+    Comment.reset_riaction if Comment.riactionary?
+
+    # multiple test runs are building up the callbacks
+    Comment.class_eval do
+      reset_callbacks :create
+      reset_callbacks :update
+      reset_callbacks :destroy
+    end
   end
   
-  describe "using riaction" do    
-    describe "to define a profile" do
+  describe "basic class methods" do
+    it "should say if a class is not using riaction" do
+      Session.riactionary?.should be_false
+    end
+    
+    it "should say if a class is using riaction" do
+      User.class_eval do
+        riaction :profile, :type => :player, :custom => :id
+      end
+      User.riactionary?.should be_true
+    end
+  end
+  
+  describe "defining an IA profile on an AR class" do
+    it "should store the type and identifiers and make them available as key/values through an instance method" do
+      User.class_eval do
+        riaction :profile, :type => :player, :custom => :id, :username => :name
+      end
+      user = User.riactionless{ User.create(:name => 'zortnac') }
+      hash_including({
+        :player => {
+          :custom => user.id, 
+          :username => user.name}
+        }).should == user.riaction_profile_keys
+    end
+    
+    describe "with a method name as an identifier value" do
       before do
-        class RiactionClass < RiactionTestBase
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
         end
       end
       
-      describe "the first time" do
-        it "should set up the profile info" do
-          RiactionClass.riaction_profile?.should be_false
-          RiactionClass.class_eval do
-            riaction :profile, :type => :user, :custom => :id
+      it "should return the correct data for that identifier" do
+        user = User.riactionless{ User.create(:name => 'zortnac') }
+        user.riaction_profile_keys[:player][:custom].should == user.id
+      end
+    end
+    
+    describe "with a proc as an identifier value" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => Proc.new {|record| record.name}
+        end
+      end
+      
+      it "should return the correct data for that identifier type" do
+        user = User.riactionless{ User.create(:name => 'zortnac') }
+        user.riaction_profile_keys[:player][:custom].should == 'zortnac'
+      end
+    end
+    
+    describe "with an unsupported identifier type" do
+      it "should raise a configuration error" do
+        lambda {
+          User.class_eval do
+            riaction :profile, :type => :player, :unsupported_type => :id
           end
-          RiactionClass.riaction_profile?.should be_true
-          hash_including(:custom => :id).should == RiactionClass.riaction_profiles[:user][:identifiers]
+        }.should raise_error(Riaction::ConfigurationError)
+      end
+    end
+    
+    describe "when a class defines a single profile" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
         end
       end
       
-      describe "a second time" do
+      it "should report that it defines at least one profile" do
+        User.riaction_profile?.should be_true
+      end
+      
+      it "should report that a single profile is defined" do
+        User.riaction_profile_types_defined.should == 1
+      end
+      
+      describe "the methods mapping to the IActionable API calls" do
         before do
-          RiactionClass.class_eval do
-            riaction :profile, :type => :user, :custom => :id
-          end
+          @user = User.riactionless{ User.create(:name => 'zortnac') }
+          @mock_response = mock("mock API response").as_null_object
         end
-        it "should not try to invoke any internal config methods" do
-          RiactionClass.should_not_receive(:define_profile)
-          RiactionClass.should_not_receive(:include)
-          RiactionClass.should_not_receive(:after_create)
-          RiactionClass.class_eval do
-            riaction :profile, :type => :user, :custom => :id
-          end
+
+        it "should load a profile through the API with the correct parameters" do
+          @api.should_receive(:get_profile_summary).once.with("player", "custom", @user.id.to_s, 10).and_return(@mock_response)
+          @user.riaction_profile_summary(10).should == @mock_response
+        end
+        
+        it  "should load profile achievments through the API with the correct parameters" do
+          @api.should_receive(:get_profile_achievements).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+          @user.riaction_profile_achievements.should == @mock_response
+        end
+        
+        it  "should load profile challenges through the API with the correct parameters" do
+          @api.should_receive(:get_profile_challenges).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+          @user.riaction_profile_challenges.should == @mock_response
+        end
+        
+        it  "should load profile goals through the API with the correct parameters" do
+          @api.should_receive(:get_profile_goals).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+          @user.riaction_profile_goals.should == @mock_response
+        end
+
+        it "should load profile notifications through the API with the correct parameters" do
+          @api.should_receive(:get_profile_notifications).once.with("player", "custom", @user.id.to_s).and_return(@mock_response)
+          @user.riaction_profile_notifications.should == @mock_response
         end
       end
     end
     
-    describe "to define an event" do
+    describe "when a class defines multiple profiles" do
       before do
-        class RiactionClass < RiactionTestBase
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
+          riaction :profile, :type => :npc, :username => :name, :custom => :id
+        end
+      end
+      
+      it "should report that the correct number of multiple profiles are defined" do
+        User.riaction_profile_types_defined.should == 2
+      end
+      
+      it "should store all of them correctly, just as a single one is stored correctly" do
+        user = User.riactionless{ User.create(:name => 'zortnac') }
+        hash_including({
+          :player => {
+            :custom => user.id
+          },
+          :npc => {
+            :username => user.name, 
+            :custom => user.id
+          }
+        }).should == user.riaction_profile_keys
+      end
+      
+      it "should raise an error when trying to set a profile that isn't defined" do
+        lambda {User.create(:name => 'zortnac').riaction_set_profile(:bogus)}.should raise_error(Riaction::RuntimeError)
+      end
+      
+      describe "the methods mapping to the IActionable API calls" do
+        before do
+          @user = User.riactionless{ User.create(:name => 'zortnac') }
+          @mock_response = mock("mock API response").as_null_object
+        end
+        
+        describe "when called without specifying which profile type to use" do
+          it "should load a profile through the API with the correct parameters, using the first profile type defined in the class" do
+            @api.should_receive(:get_profile_summary).once.with("player", "custom", @user.id.to_s, 10).and_return(@mock_response)
+            @user.riaction_profile_summary(10).should == @mock_response
+          end
+
+          it  "should load profile achievments through the API with the correct parameters, using the first profile type defined in the class" do
+            @api.should_receive(:get_profile_achievements).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_achievements.should == @mock_response
+          end
+
+          it  "should load profile challenges through the API with the correct parameters, using the first profile type defined in the class" do
+            @api.should_receive(:get_profile_challenges).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_challenges.should == @mock_response
+          end
+
+          it  "should load profile goals through the API with the correct parameters, using the first profile type defined in the class" do
+            @api.should_receive(:get_profile_goals).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_goals.should == @mock_response
+          end
+
+          it "should load profile notifications through the API with the correct parameters, using the first profile type defined in the class" do
+            @api.should_receive(:get_profile_notifications).once.with("player", "custom", @user.id.to_s).and_return(@mock_response)
+            @user.riaction_profile_notifications.should == @mock_response
+          end
+        end
+
+        describe "when called after specifying which profile type to use" do
+          before do
+            @user.riaction_set_profile(:npc)
+          end
+          
+          it "should load a profile through the API with the correct parameters" do
+            @api.should_receive(:get_profile_summary).once.with("npc", "username", @user.name, 10).and_return(@mock_response)
+            @user.riaction_profile_summary(10).should == @mock_response
+          end
+
+          it  "should load profile achievments through the API with the correct parameters" do
+            @api.should_receive(:get_profile_achievements).once.with("npc", "username", @user.name, nil).and_return(@mock_response)
+            @user.riaction_profile_achievements.should == @mock_response
+          end
+
+          it  "should load profile challenges through the API with the correct parameters" do
+            @api.should_receive(:get_profile_challenges).once.with("npc", "username", @user.name, nil).and_return(@mock_response)
+            @user.riaction_profile_challenges.should == @mock_response
+          end
+
+          it  "should load profile goals through the API with the correct parameters" do
+            @api.should_receive(:get_profile_goals).once.with("npc", "username", @user.name, nil).and_return(@mock_response)
+            @user.riaction_profile_goals.should == @mock_response
+          end
+
+          it "should load profile notifications through the API with the correct parameters" do
+            @api.should_receive(:get_profile_notifications).once.with("npc", "username", @user.name).and_return(@mock_response)
+            @user.riaction_profile_notifications.should == @mock_response
+          end
+        end
+      end
+    end
+
+    describe "and being invoked upon a record's creation" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
+        end
+      end
+      
+      it "should enqueue a task to create a profile for the correct record" do
+        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", instance_of(Fixnum))
+        User.create(:name => 'zortnac')
+      end
+    end
+    
+    describe "and being disabled for a block of code" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
+        end
+      end
+      
+      it "should not enqueue a task to create a profile when the record is created" do
+        Resque.should_not_receive(:enqueue)
+        
+        User.riactionless do 
+          user = User.create(:name => 'zortnac')
         end
       end
 
-      describe "the first time" do
-        it "should set up the event info" do
-          RiactionClass.riaction_defines_event?(:create_profile).should be_false
-          RiactionClass.class_eval do
-            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
-          end
-          RiactionClass.riaction_defines_event?(:create_profile).should be_true
-        end
+      it "should return the value of the block" do
+          42.should == User.riactionless { 42 }
       end
 
-      describe "a second time" do
+      it "should reset even if an error is raised within the block" do
+        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", instance_of(Fixnum))
+        begin 
+          User.riactionless do 
+            raise Exception.new
+          end
+        rescue Exception => e
+        end
+        User.create(:name => 'zortnac')
+      end
+    end
+  end
+  
+  describe "defining an IA event on an AR class" do
+    before do
+      User.class_eval do
+        riaction :profile, :type => :player, :custom => :id
+        riaction :profile, :type => :npc, :username => :name, :custom => :id
+      end
+      @user = User.riactionless{ User.create(:name => 'zortnac') }
+    end
+    
+    it "should store the event name and options and make them available as key/values through an instance method" do
+      Comment.class_eval do
+        riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
+      end
+      comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      hash_including({
+        :make_a_comment => {
+          :profile => {
+            :type => :npc,
+            :id_type => :username,
+            :id => @user.name
+          },
+          :params => {:foo => 'bar'} 
+        }
+      }).should == comment.riaction_event_params
+    end
+    
+    describe "where multiple events are defined" do
+      before do
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
+          riaction :event, :name => :like_a_comment, :trigger => :like, :profile => :user, :profile_type => :player, :params => {:apple => 'pi'}
+        end
+        
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      end
+      
+      describe "with the same event name" do
         before do
-          RiactionClass.class_eval do
-            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
-          end
-        end
-        it "should not try to invoke any internal config methods" do
-          RiactionClass.should_not_receive(:define_event)
-          RiactionClass.should_not_receive(:include)
-          RiactionClass.class_eval do
-            riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :player, :params => {:are => 'different'}
           end
         end
       end
-    end
-  end
-  
-  describe "logging events" do
-    class MyClass < RiactionTestBase
-      riaction :profile, :type => :user, :custom => :id
-      riaction :event, :name => :create_profile, :trigger => :create, :profile => :self, :params => {:foo => "bar"}
-    end
-    
-    class BadClass < RiactionTestBase
-    end
-    
-    before do
-      @instance = MyClass.new
-      MyClass.stub!(:find_by_id!).and_return(@instance)
-      @bad_instance = BadClass.new
-      BadClass.stub!(:find_by_id!).and_return(@bad_instance)
-    end
-    
-    describe "when the profile generating the event exists" do
-      before do
-        @api.stub!(:get_profile_summary).and_return(true)
+      
+      it "should store the event name and options and make them available as key/valyes through an instance method" do
+        hash_including({
+          :make_a_comment => {
+            :profile => {
+              :type => :npc,
+              :id_type => :username,
+              :id => @user.name
+            },
+            :params => {:foo => 'bar'} 
+          },
+          :like_a_comment => {
+            :profile => {
+              :type => :player,
+              :id_type => :custom,
+              :id => @user.id
+            },
+            :params => {:apple => 'pi'}
+          }
+        }).should == @comment.riaction_event_params
       end
       
-      it "should send the event with parameters based on the details provided in the class" do
-        @api.should_receive(:log_event).once.with("user", "custom", @instance.id.to_s, :create_profile, {:foo => "bar"})
-        Riaction::EventPerformer.perform(:create_profile, "MyClass", @instance.id)
+      it "should return the number of events defined" do
+        Comment.riaction_events_defined.should == 2
       end
     end
     
-    describe "when the profile generating the event does not exist" do
-      before do
-        @api.stub!(:get_profile_summary).and_raise(IActionable::Error::BadRequest.new(nil))
-      end
-      
-      it "should create the profile and then send the event with parameters based on the details provided in the class" do
-        @api.should_receive(:create_profile).once.ordered.with("user", "custom", @instance.id.to_s)
-        @api.should_receive(:log_event).once.ordered.with("user", "custom", @instance.id.to_s, :create_profile, {:foo => "bar"})
-        Riaction::EventPerformer.perform(:create_profile, "MyClass", @instance.id)
-      end
-    end
-    
-    describe "when the class does not define the named event" do
-      it "should not attempt to log the event, and raise an error" do
-        @api.should_not_receive(:log_event)
-        lambda { Riaction::EventPerformer.perform(:bad_event_name, "MyClass", @instance.id) }.should raise_error(Riaction::NoEventDefined)
-      end
-    end
-    
-    describe "when the class does not define the named event or any other riaction property" do
-      it "should not attempt to log the event, and raise an error" do
-        @api.should_not_receive(:log_event)
-        lambda { Riaction::EventPerformer.perform(:create_profile, "BadClass", @bad_instance.id) }.should raise_error(Riaction::NoEventDefined)
-      end
-    end
-    
-    describe "when the API raises an IActionable internal error" do
-      before do
-        @api.stub!(:get_profile_summary)
-        @api.stub!(:create_profile)
-        @api.stub!(:log_event).and_raise(IActionable::Error::Internal.new(nil))
-        Resque.stub!(:enqueue)
-      end
-      
-      it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
-        Resque.should_receive(:enqueue).exactly(Riaction::Constants.retry_attempts_for_internal_error).times.with(Riaction::EventPerformer, :create_profile, "MyClass", @instance.id, instance_of(Fixnum))
+    describe "and the triggering of an event" do
+      describe "when caused by the CRUD action 'create'" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user
+          end
+        end
         
-        (Riaction::Constants.retry_attempts_for_internal_error).times do |i|
-          lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, i) }.should_not raise_error
+        it "should try to enqueue the event when the record is created" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+          Comment.create(:content => "this is a comment")
         end
-        lambda { Riaction::EventPerformer.perform(:create_profile, "MyClass", @bad_instance.id, Riaction::Constants.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
-      end
-    end
-  end
-  
-  describe "profile generation" do
-    class MyClass < RiactionTestBase
-      riaction :profile, :type => :user, :custom => :id
-    end
-    
-    class BadClass < RiactionTestBase
-    end
-    
-    describe "with a class that defines itself as an iactionable profile" do
-      before do
-        @instance = MyClass.new
-        MyClass.stub!(:find_by_id!).and_return(@instance)
-      end
-      
-      it "should create the profile with parameters based on the details provided in the class" do
-        @api.should_receive(:create_profile).once.ordered.with("user", "custom", @instance.id.to_s)
-        Riaction::ProfileCreator.perform("MyClass", @instance.id)
-      end
-    end
-    
-    describe "with a class that does not define itself as an iactionable profile" do
-      before do
-        @instance = BadClass.new
-        BadClass.stub!(:find_by_id!).and_return(@instance)
-      end
-      
-      it "should not attempt to create the profile, and raise an error" do
-        @api.should_not_receive(:create_profile)
-        lambda { Riaction::ProfileCreator.perform("BadClass", @instance.id) }.should raise_error(Riaction::NoProfileDefined)
-      end
-    end
-    
-    describe "when the API raises an IActionable internal error" do
-      before do
-        @instance = MyClass.new
-        MyClass.stub!(:find_by_id!).and_return(@instance)
-        @api.stub!(:create_profile).and_raise(IActionable::Error::Internal.new(nil))
-        Resque.stub!(:enqueue)
-      end
-      
-      it "should re-schedule the task some defined number of times before re-raising again on the last attempt" do
-        Resque.should_receive(:enqueue).exactly(Riaction::Constants.retry_attempts_for_internal_error).times.with(Riaction::ProfileCreator, "MyClass", @instance.id, instance_of(Fixnum))
         
-        (Riaction::Constants.retry_attempts_for_internal_error).times do |i|
-          lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, i) }.should_not raise_error
+        it "should try to enqueue the event only when the record is created" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+          comment = Comment.create(:content => "this is a comment")
+          comment.content = "updated content"
+          comment.save
+          comment.destroy
         end
-        lambda { Riaction::ProfileCreator.perform("MyClass", @instance.id, Riaction::Constants.retry_attempts_for_internal_error) }.should raise_error(IActionable::Error::Internal)
-      end
-    end
-  end
-  
-  describe "event triggering" do
-    class EventDrivingClass < RiactionTestBase
-      def initialize
-        super
       end
       
-      riaction :event, :name => :creation_event, :trigger => :create, :profile => :self
-      riaction :event, :name => :updating_event, :trigger => :update, :profile => :self
-      riaction :event, :name => :destruction_event, :trigger => :destroy, :profile => :self
-      riaction :event, :name => :custom_event, :trigger => :custom, :profile => :self
-      
-      def id
-        42
-      end
-    end
-    
-    before do
-      @event_driver_instance = EventDrivingClass.new
-    end
-    
-    describe "from an after-create callback" do
-      it "should log the event using the profile and paramters specified in the class" do
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :creation_event, "EventDrivingClass", @event_driver_instance.id)
-        EventDrivingClass.new
-      end
-    end
-    
-    describe "from an after-update callback" do
-      it "should log the event using the profile and paramters specified in the class" do
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :updating_event, "EventDrivingClass", @event_driver_instance.id)
-        @event_driver_instance.update
-      end
-    end
-    
-    describe "from an after-destroy callback" do
-      it "should log the event using the profile and paramters specified in the class" do
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :destruction_event, "EventDrivingClass", @event_driver_instance.id)
-        @event_driver_instance.destroy
-      end
-    end
-    
-    describe "from a custom trigger" do
-      it "should log the event using the profile and paramters specified in the class" do
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :custom_event, "EventDrivingClass", @event_driver_instance.id)
-        @event_driver_instance.trigger_custom!
-      end
-    end
-  end
-  
-  describe "profile" do
-    class ProfileClass < RiactionTestBase
-      def initialize
-        super
+      describe "when caused by the CRUD action 'update'" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :update, :profile => :user
+          end
+          @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+        end
+        
+        it "should try to enqueue the event when the record is updated" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+          @comment.content = "updated content"
+          @comment.save
+        end
+        
+        it "should try to enqueue the event only when the record is updated" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+          comment = Comment.create(:content => "this is a comment")
+          comment.content = "updated content"
+          comment.save
+          comment.destroy
+        end
       end
       
-      riaction :profile, :type => :user, :display_name => :full_name, :custom => :id, :username => :name
-      
-      def id
-        42
+      describe "when caused by the CRUD action 'destroy'" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :destroy, :profile => :user
+          end
+          @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+        end
+        
+        it "should try to enqueue the event when the record is destroyed" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+          @comment.destroy
+        end
+        
+        it "should try to enqueue the event only when the record is destroyed" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+          comment = Comment.create(:content => "this is a comment")
+          comment.content = "updated content"
+          comment.save
+          comment.destroy
+        end
       end
       
-      def name
-        "zortnac"
+      describe "when caused by a non-crud action" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :make_comment, :profile => :user
+          end
+          @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+        end
+        
+        it "should try to enqueue the event when the provided trigger method is called" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+          @comment.trigger_make_comment!
+        end
+        
+        it "should try to enqueue the event only when the provided trigger method is called" do
+          Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+          comment = Comment.create(:content => "this is a comment")
+          comment.trigger_make_comment!
+          comment.content = "updated content"
+          comment.save
+          comment.destroy
+        end
       end
       
-      def full_name
-        "zortnac pah"
+      describe "with a guard in place" do
+        describe "being a method that returns true" do
+          describe "when caused by the CRUD action 'create'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :if => :record_event?
+                
+                def record_event?
+                  true
+                end
+              end
+            end
+
+            it "should try to enqueue the event when the record is created" do
+              Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", instance_of(Fixnum))
+              Comment.create(:content => "this is a comment")
+            end
+          end
+          
+          describe "when caused by the CRUD action 'update'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :update, :profile => :user, :if => :record_event?
+                
+                def record_event?
+                  true
+                end
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should try to enqueue the event when the record is updated" do
+              Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+              @comment.content = "updated content"
+              @comment.save
+            end
+          end
+
+          describe "when caused by the CRUD action 'destroy'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :destroy, :profile => :user, :if => :record_event?
+                
+                def record_event?
+                  true
+                end
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should try to enqueue the event when the record is destroyed" do
+              Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+              @comment.destroy
+            end
+          end
+
+          describe "when caused by a non-crud action" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :make_comment, :profile => :user, :if => :record_event?
+                
+                def record_event?
+                  true
+                end
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should try to enqueue the event when the provided trigger method is called" do
+              Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, "Comment", @comment.id)
+              @comment.trigger_make_comment!
+            end
+          end
+        end
+        
+        describe "being a proc that returns false" do
+          describe "when caused by the CRUD action 'create'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :if => Proc.new{ |record| false }
+              end
+            end
+
+            it "should not try to enqueue the event when the record is created" do
+              Resque.should_not_receive(:enqueue)
+              Comment.create(:content => "this is a comment")
+            end
+          end
+          
+          describe "when caused by the CRUD action 'update'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :update, :profile => :user, :if => Proc.new{ |record| false }
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should not try to enqueue the event when the record is updated" do
+              Resque.should_not_receive(:enqueue)
+              @comment.content = "updated content"
+              @comment.save
+            end
+          end
+
+          describe "when caused by the CRUD action 'destroy'" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :destroy, :profile => :user, :if => Proc.new{ |record| false }
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should not try to enqueue the event when the record is destroyed" do
+              Resque.should_not_receive(:enqueue)
+              @comment.destroy
+            end
+          end
+
+          describe "when caused by a non-crud action" do
+            before do
+              Comment.class_eval do
+                riaction :event, :name => :make_a_comment, :trigger => :make_comment, :profile => :user, :if => Proc.new{ |record| false }
+              end
+              @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+            end
+
+            it "should not try to enqueue the event when the provided trigger method is called" do
+              Resque.should_not_receive(:enqueue)
+              @comment.trigger_make_comment!
+            end
+          end
+        end
       end
     end
     
-    describe "creation triggering" do
-      it "should create the profile based on the parameters given in the class, when an instance of that class is created" do
-        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "ProfileClass", 42)
-        ProfileClass.new
+    describe "and the riaction profile object associated with the event" do
+      describe "when missing from the declaration entirely" do
+        it "should raise a configuration error" do
+          lambda {
+            Comment.class_eval do
+              riaction :event, :name => :make_a_comment, :trigger => :create
+            end
+          }.should raise_error(Riaction::ConfigurationError)
+        end
+      end
+      
+      describe "when given as the same object generating the event" do
+        before do
+          Comment.class_eval do
+            riaction :profile, :type => :comment_player, :custom => :id
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :self
+          end
+          @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
+        end
+        
+        it "should use that same object as the profile" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :comment_player,
+                :id_type => :custom,
+                :id => @comment.id
+              },
+              :params => {} 
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when given as a method name" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use object returned by that method" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => {} 
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when given as a proc" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => Proc.new{|record| record.user}
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use the object returned by that proc" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => {} 
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when the object given as a profile is not a valid riaction profile" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :self #comment does not declare itself as a profile in this case
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should raise a configuration error" do
+          lambda{ @comment.riaction_event_params }.should raise_error(Riaction::ConfigurationError)
+        end
+      end
+      
+      describe "when the object given as a profile cannot be found" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user
+          end
+          @comment = Comment.riactionless{ Comment.create(:content => 'this is a comment') }
+        end
+        
+        it "should raise a runtime error" do
+          lambda{ @comment.riaction_event_params }.should raise_error(Riaction::RuntimeError)
+        end
+      end
+      
+      describe "when the object given as a profile defines more than one profile type" do
+        describe "and the event class does not specify which" do
+          before do
+            Comment.class_eval do
+              riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user
+            end
+            @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+          end
+          
+          it "should use the default type for that profile class (the first defined in the class)" do
+            hash_including({
+              :make_a_comment => {
+                :profile => {
+                  :type => :player,
+                  :id_type => :custom,
+                  :id => @user.id
+                },
+                :params => {}
+              }
+            }).should == @comment.riaction_event_params
+          end
+        end
+        
+        describe "and the event class specifies which type" do
+          before do
+            Comment.class_eval do
+              riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc
+            end
+            @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+          end
+          
+          it "should use the type specified" do
+            hash_including({
+              :make_a_comment => {
+                :profile => {
+                  :type => :npc,
+                  :id_type => :username,
+                  :id => @user.name
+                },
+                :params => {} 
+              }
+            }).should == @comment.riaction_event_params
+          end
+        end
+        
+        describe "and the event specifies a type that does not exist" do
+          before do
+            Comment.class_eval do
+              riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :bogus
+            end
+            @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+          end
+
+          it "should raise a configuration error" do
+            lambda{ @comment.riaction_event_params }.should raise_error(Riaction::ConfigurationError)
+          end
+        end
+      end
+    end
+
+    describe "and the params provided for an event" do
+      describe "when given as a method" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => :params_for_event
+            
+            def params_for_event
+              {:apple => 'pi', :pumpkin => 'pi'}
+            end
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use the value returned by that method" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => @comment.params_for_event
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when given as a proc" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => Proc.new{|record| {:apple => 'pi', :pumpkin => 'pi'} }
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use the value returned by that proc" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => {:apple => 'pi', :pumpkin => 'pi'}
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when given as a simple hash" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => {:apple => 'pi', :pumpkin => 'pi'}
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use that same hash" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => {:apple => 'pi', :pumpkin => 'pi'}
+            }
+          }).should == @comment.riaction_event_params
+        end
+      end
+      
+      describe "when given as hash where some values are methods" do
+        before do
+          Comment.class_eval do
+            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => {:apple => 'pi', :drink => :wine}
+            
+            def wine
+              'ruby port'
+            end
+          end
+          @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        end
+        
+        it "should use that same hash, with the methods' values in place" do
+          hash_including({
+            :make_a_comment => {
+              :profile => {
+                :type => :player,
+                :id_type => :custom,
+                :id => @user.id
+              },
+              :params => {:apple => 'pi', :drink => @comment.wine}
+            }
+          }).should == @comment.riaction_event_params
+        end
       end
     end
     
-    describe "instance methods" do
+    describe "and being disabled for a block of code" do
       before do
-        @instance = ProfileClass.new
-        @mock_response = mock("mock response")
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user
+          riaction :event, :name => :like_a_comment, :trigger => :like, :profile => :user
+        end
+        @comment = Comment.riactionless{ Comment.create(:content => "this is a comment") }
       end
       
-      describe "for loading a profile summary" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:get_profile_summary).once.with("user", "custom", @instance.id.to_s, 10).and_return(@mock_response)
-          @instance.riaction_profile_summary(10).should == @mock_response
-        end
+      it "should not enqueue a task to send the event when it would normally be triggered by a CRUD action" do
+        Resque.should_not_receive(:enqueue)
+        Comment.riactionless { Comment.create(:content => "this is a comment") }
       end
       
-      describe "for creating a profile" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance, including the display name" do
-          @api.stub!(:get_profile_summary).and_return(nil)
-          @api.should_receive(:create_profile).once.with("user", "custom", @instance.id.to_s, @instance.full_name).and_return(@mock_response)
-          @instance.riaction_create_profile.should == @mock_response
-        end
+      it "should not enqueue a task to send the event when it would normally be triggered by a custom action" do
+        Resque.should_not_receive(:enqueue)
+        Comment.riactionless { @comment.trigger_like! }
       end
-      
-      describe "for adding new identifiers to a profile" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:add_profile_identifier).once.with("user", "custom", @instance.id.to_s, "username", @instance.name).and_return(@mock_response)
-          @instance.riaction_update_profile(:username).should == @mock_response
-        end
+
+      it "should return the value of the block" do
+          42.should == Comment.riactionless { 42 }
       end
-      
-      describe "for loading profile achievments" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:get_profile_achievements).once.with("user", "custom", @instance.id.to_s, nil).and_return(@mock_response)
-          @instance.riaction_profile_achievements.should == @mock_response
+
+      it "should reset even if an error is raised within the block" do
+        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :like_a_comment, "Comment", instance_of(Fixnum))
+        begin 
+          Comment.riactionless do 
+            raise Exception.new
+          end
+        rescue Exception => e
         end
-      end
-      
-      describe "for loading profile challenges" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:get_profile_challenges).once.with("user", "custom", @instance.id.to_s, nil).and_return(@mock_response)
-          @instance.riaction_profile_challenges.should == @mock_response
-        end
-      end
-      
-      describe "for loading profile goals" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:get_profile_goals).once.with("user", "custom", @instance.id.to_s, nil).and_return(@mock_response)
-          @instance.riaction_profile_goals.should == @mock_response
-        end
-      end
-      
-      describe "for loading profile notifications" do
-        it "should make the correct call to the API with the parameters given in the class, and the values provided by the instance" do
-          @api.should_receive(:get_profile_notifications).once.with("user", "custom", @instance.id.to_s).and_return(@mock_response)
-          @instance.riaction_profile_notifications.should == @mock_response
-        end
+        @comment.trigger_like!
       end
     end
+  end
+  
+  after do
+    ActiveRecord::Base.connection.rollback_db_transaction
+    ActiveRecord::Base.connection.decrement_open_transactions
   end
 end
