@@ -162,6 +162,14 @@ A class the declares itself as a profile may also declare events which rely on t
 
 In the above example of a declaration on the User class, the user will fire a `:join_the_game` event using itself as the profile upon its creation.  The profile declaration should come before the event declaration.
 
+#### Turning Riaction Off ####
+
+If you want to avoid the automatic creation of a profile, or the automatic logging of an event, classes that declare themselves as riaction profiles or event drivers provide a method to disable those automatic events:
+
+    User.riactionless{ User.create(:nickname => 'zortnac') }                    # won't create the profile for the newly created user
+    Review.riactionless{ @user_instance.reviews.create(:text => "loved it!") }  # won't fire the 'write_a_review' event
+    Review.riactionless{ @review_instance.trigger_thumbs_up! }                  # won't fire the 'receive_thumbs_up' event
+
 ### Rails Rake Tasks ###
 
 There are 3 rake tasks included for summarizing all of your models' declarations as well as a way to initialize profiles on IActionable.  To see a report of all the events declared across your application, run the following:
