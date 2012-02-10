@@ -7,5 +7,15 @@ module Riaction
     def self.retry_attempts_for_internal_error
       3
     end
+    
+    def self.supported_identifier_types
+      [:email,:username,:custom,:facebook,:twitter,:salesforce]
+    end
+    
+    def self.riaction_options
+      {
+        :default_event_params => {}
+      }
+    end
   end
 end

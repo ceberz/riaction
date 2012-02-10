@@ -1,4 +1,3 @@
-require 'riaction/iactionable/api'
 require "active_support"
 require "active_record"
 require 'riaction/event_performer'
@@ -7,337 +6,358 @@ require 'riaction/profile_creation_callback'
 require 'riaction/crud_event_callback'
 
 module Riaction
-  
+  class RuntimeError < StandardError; end
+  class ConfigurationError < StandardError; end
   class NoEventDefined < StandardError; end
   class NoProfileDefined < StandardError; end
-
+  
   module Riaction
     PROFILE_CLASSES = []
-    EVENT_LOGGING_CLASSES = []
+    EVENT_CLASSES = []
     
-    def riaction(object_type, opts)
-      if object_type == :profile
-        unless riaction_profile?
-          (PROFILE_CLASSES << self.to_s).uniq!
-          define_profile(opts.delete(:type), opts)
-          include Riaction::ProfileInstanceMethods
-          send :after_create, ::Riaction::ProfileCreationCallback.new
-        end
-      elsif object_type == :event
-        unless riaction_defines_events?
-          make_events_definable
-        end
-        unless riaction_defines_event?(opts[:name])
-          (EVENT_LOGGING_CLASSES << self.to_s).uniq!
-          define_event(opts[:name], opts[:trigger], opts[:profile], opts[:params], opts[:if])
-          include Riaction::EventInstanceMethods
-        end
-      end
-    end
-    
-    def make_events_definable
-      class << self
-        def riaction_events
-          @riaction_events ||= {}
-        end
-      
-        def riaction_defines_events? 
-          true
-        end
-      end
-    end
-    
-    def define_event(name, trigger, profile, params = {}, guard = nil)
-      trigger = name unless trigger
-    
-      # store the event
-      riaction_events.store(name, {:trigger => trigger, :profile => profile, :params => params, :guard => guard})
-    
-      # Create the callback or the means to trigger it
-      if ::Riaction::Constants.crud_actions.include? trigger
-        send "after_#{trigger}".to_sym, ::Riaction::CrudEventCallback.new(name)
-      
-        define_method("trigger_#{name}!") do
-          if self.riaction_log_event?(name)
-            Resque.enqueue(::Riaction::EventPerformer, name, self.class.base_class.to_s, self.id)
-          end
-        end
-      else
-        define_method("trigger_#{trigger}!") do
-          if self.riaction_log_event?(name)
-            Resque.enqueue(::Riaction::EventPerformer, name, self.class.base_class.to_s, self.id)
+    module ClassMethods
+      def riaction(type, opts)
+        establish_riactionary_class unless riactionary?
+        if type == :profile
+          establish_riactionary_profile_class unless riaction_profile?
+          add_or_update_riaction_profile(opts.delete(:type), opts)
+        elsif type == :event
+          establish_riactionary_event_class unless riaction_events?
+          add_or_update_riaction_event(opts.delete(:name), opts)
+        elsif type == :option || type == :options
+          opts.each_pair do |option, value|
+            riaction_options[option] = value if ::Riaction::Constants.riaction_options.has_key?(option)
           end
         end
       end
-    end
-  
-    def define_profile(type, fields)
-      class << self
-        def riaction_profiles
-          @riaction_profiles ||= {}
+
+      def establish_riactionary_class
+        class << self
+          def riactionary?
+            true
+          end
+          
+          def riactionless?
+            @riactionless ||= false
+          end
+          
+          def riaction_profile_keys
+            @riaction_profile_keys ||= {}
+          end
+          
+          def riaction_events
+            @riaction_events ||= {}
+          end
+          
+          def riaction_options
+            @riaction_options ||= ::Riaction::Constants.riaction_options
+          end
+          
+          def riaction_use_profile
+            @riaction_use_profile ||= nil
+          end
+          
+          def riactionless(&block)
+            if block_given?
+              @riactionless = true
+              begin
+                block_value = yield
+              ensure
+                @riactionless = false
+              end
+            end
+          end
+          
+          def reset_riaction
+            riaction_profile_keys.clear
+            riaction_events.clear
+            riaction_options.merge!(::Riaction::Constants.riaction_options)
+            @riaction_use_profile = nil
+          end
+          
+          def add_or_update_riaction_profile(type, opts)
+            display_name = opts.delete(:display_name) || nil
+            riaction_check_type(:display_name, display_name, [Symbol, Proc, NilClass])
+            unless opts.keys.any?{|type| ::Riaction::Constants.supported_identifier_types.include?(type)}
+              raise ConfigurationError.new("#{self.to_s} defining a riaction profile must use supported IActionable types: #{::Riaction::Constants.supported_identifier_types.map(&:to_s).join(", ")}")
+            end
+            riaction_profile_keys.store(type, {
+              :display_name => display_name,
+              :identifiers => opts
+            })
+            @riaction_use_profile ||= type
+          end
+
+          def add_or_update_riaction_event(name, opts)
+            # set values
+            trigger = opts.delete(:trigger) || :create
+            profile = opts.delete(:profile)
+            profile_type = opts.delete(:profile_type)
+            params = opts.delete(:params) || {}
+            guard = opts.delete(:if) || opts.delete(:guard) || true
+            # check for required types and presence 
+            if profile.nil?
+              raise ConfigurationError.new("#{self.to_s} defining a riaction event must provide a profile")
+            end
+            riaction_check_type(:trigger, trigger, [Symbol])
+            riaction_check_type(:profile, profile, [Symbol, Proc])
+            riaction_check_type(:profile_type, profile_type, [Symbol, NilClass])
+            riaction_check_type(:params, params, [Symbol, Proc, Hash])
+            riaction_check_type(:guard, guard, [Symbol, Proc, TrueClass])
+            # store our event data
+            riaction_events.store(name, {
+              :trigger => trigger,
+              :profile => profile,
+              :profile_type => profile_type,
+              :params => params,
+              :guard => guard
+            })
+            # create necessary callbacks and instance methods for triggers
+            if ::Riaction::Constants.crud_actions.include? trigger
+              send "after_#{trigger}".to_sym, ::Riaction::CrudEventCallback.new(name)
+            else
+              define_method("trigger_#{trigger}!") do
+                if self.riaction_log_event?(name) && !self.class.riactionless?
+                  Resque.enqueue(::Riaction::EventPerformer, name, self.class.base_class.to_s, self.id)
+                end
+              end
+            end
+          end
+          
+          def riaction_profile_types_defined
+            riaction_profile_keys.size
+          end
+          
+          def riaction_events_defined
+            riaction_events.size
+          end
+          
+          def riaction_check_type(name, value, allowed_types)
+            unless allowed_types.any?{|type| value.is_a?(type)} 
+              raise ConfigurationError.new("value given for #{name} must be of types: #{allowed_types.map(&:to_s).join(', ')}")
+            end
+          end
         end
-      
-        def riaction_profile?
-          true
+        
+        include ::Riaction::Riaction::InstanceMethods
+      end
+
+      def establish_riactionary_profile_class
+        (::Riaction::Riaction::PROFILE_CLASSES << self.to_s).uniq!
+
+        class << self
+          def riaction_profile?
+            true
+          end
         end
+
+        include ::Riaction::Riaction::Profile::InstanceMethods
+
+        after_create ::Riaction::ProfileCreationCallback.new({})
       end
       
-      # store the profile
-      riaction_profiles.store(type, {:display_name_method => fields.delete(:display_name), :identifiers => fields})
-    end
-  
-    def riaction_profile?
-      false
-    end
-  
-    def riaction_defines_events?
-      false
-    end
-  
-    def riaction_defines_event?(event_name)
-      if riaction_defines_events?
-        riaction_events[event_name].present?
-      else
+      def establish_riactionary_event_class
+        (::Riaction::Riaction::EVENT_CLASSES << self.to_s).uniq!
+
+        class << self
+          def riaction_events?
+            true
+          end
+          
+          def riaction_defines_event?(event_name)
+            riaction_events.has_key? event_name
+          end
+        end
+
+        include ::Riaction::Riaction::Event::InstanceMethods
+      end
+
+      def riactionary?
+        false
+      end
+      
+      def riaction_profile?
+        false
+      end
+      
+      def riaction_events?
         false
       end
     end
-    # end
-
-    module EventInstanceMethods
-      def riaction_event(event_name)
-        event = self.class.riaction_events.fetch(event_name.to_sym)
-        profile = riaction_event_profile(event[:profile])
-        
-        unless profile.class.respond_to?(:riaction_profile?) && profile.class.riaction_profile?
-          raise TypeError.new("Object defined for #{self.class} on event #{event_name} as a profile must itself declare riaction(:profile ...)")
-        end
-        
-        params = riaction_event_params(event[:params])
-        
-        raise TypeError.new("Params defined for #{self.class} on event #{event_name} must be a hash") unless params.kind_of? Hash
-      
-        {
-          :key => event_name.to_sym,
-          :profile => profile,
-          :params => params
-        }
-      rescue KeyError => e
-        raise NoEventDefined.new("no such event #{event_name} defined on #{self.class}")
-      end
     
-      def riaction_log_event?(event_name)
-        event = self.class.riaction_events.fetch(event_name.to_sym)
-        guard = event[:guard]
-      
-        case guard
-        when NilClass
-          true
+    module InstanceMethods
+      def riaction_resolve_param(poly)
+        case poly
         when Symbol
-          self.send guard
+          if poly == :self
+            self
+          else
+            self.send poly
+          end
         when Proc
-          guard.call self
+          poly.yield self
+        when Hash
+          resolved_hash = {}
+          poly.each_pair do |key, value|
+            resolved_hash[key] = self.respond_to?(value) ? self.send(value) : value
+          end
+          resolved_hash
         else 
-          true
+          poly
         end
-      rescue KeyError => e
-        raise NoEventDefined.new("no such event #{event_name} defined on #{self.class}")
       end
+    end
     
-      private
-    
-      def riaction_event_profile(profile)
-        if profile == :self
+    module Profile
+      module InstanceMethods
+        def riaction_profile_keys
+          resolved_hash = {}
+          self.class.riaction_profile_keys.each_pair do |profile_type, opts|
+            resolved_hash[profile_type] = {}
+            opts.fetch(:identifiers, {}).each_pair do |identifier_type, value|
+              resolved_hash[profile_type][identifier_type] = riaction_resolve_param(value)
+            end
+          end
+          resolved_hash
+        end
+        
+        def riaction_set_profile(type)
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{type}") unless riaction_profile_keys.has_key?(type)
+          @riaction_use_profile = type
           self
-        elsif profile.kind_of? Symbol
-          self.send(profile)
-        elsif profile.kind_of? Proc
-          profile.call
-        else
+        end
+        
+        def riaction_profile_display_name
+          riaction_resolve_param self.class.riaction_profile_keys.fetch(@riaction_use_profile)[:display_name]
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        end
+        
+        #################
+        #  API wrappers #
+        #################
+
+        def riaction_profile_summary(achievement_count=nil)
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_summary(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, achievement_count)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
           nil
         end
-      rescue Exception => e
-        raise
-      end
-    
-      def riaction_event_params(params)
-        if params.kind_of? Symbol
-          self.send(params)
-        elsif params.kind_of? Proc
-          params.call
-        elsif params.kind_of? Hash
-          resolved_params = {}
-          params.each_pair do |key, value|
-            resolved_params[key] = self.respond_to?(value) ? self.send(value) : value
-          end
-          resolved_params
-        else
-          {}
+
+        def riaction_profile_achievements(filter_type=nil)
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_achievements(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
         end
-      rescue Exception => e
-        raise
+
+        def riaction_profile_challenges(filter_type=nil)
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_challenges(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
+        end
+
+        def riaction_profile_goals(filter_type=nil)
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_goals(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
+        end
+
+        def riaction_profile_notifications
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_notifications(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
+        end
+
+        def riaction_profile_points(point_type)
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.get_profile_points(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, point_type)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
+        end
+
+        def riaction_update_profile_points(point_type, amount, reason="")
+          @iactionable_api ||= IActionable::Api.new
+          keys = riaction_profile_keys.fetch(riaction_use_profile)
+          @iactionable_api.update_profile_points(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, point_type, amount, reason)
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        rescue IActionable::Error::BadRequest => e
+          nil
+        end
+        
+        private
+        
+        def riaction_use_profile
+          @riaction_use_profile || self.class.riaction_use_profile
+        end
       end
     end
 
-    module ProfileInstanceMethods
-      def riaction_profile_keys(profile_type=nil, id_type=nil)
-        if self.class.riaction_profiles.size > 0
-          if profile_type && self.class.riaction_profiles.has_key?(profile_type)
-            ids = self.class.riaction_profiles.fetch(profile_type)[:identifiers]
-          else
-            profile_type = self.class.riaction_profiles.first[0]
-            ids = self.class.riaction_profiles.first[1][:identifiers]
-          end
-      
-          if id_type && ids.has_key?(id_type)
-            {:profile_type => profile_type.to_s, :id_type => id_type.to_s, :id => self.send(ids.fetch(id_type)).to_s}
-          else
-            {:profile_type => profile_type.to_s, :id_type => ids.first[0].to_s, :id => self.send(ids.first[1]).to_s}
-          end
-        else
-          {}
-        end
-      rescue KeyError, NoMethodError => e
-        {}
-      end
-      
-      def riaction_profile_display_name(profile_type=nil)
-        if self.class.riaction_profiles.size > 0
-          if profile_type && self.class.riaction_profiles.has_key?(profile_type)
-            method = self.class.riaction_profiles.fetch(profile_type)[:display_name_method]
-          else
-            method = self.class.riaction_profiles.first[1][:display_name_method]
-          end
-      
-          if method
-            if method.kind_of? Symbol
-              begin
-                self.send(method)
-              rescue NoMethodError => e
-                nil
+    module Event
+      module InstanceMethods
+        def riaction_event_params
+          resolved_hash = {}
+          self.class.riaction_events.each_pair do |event_name, args|
+            resolved_hash[event_name] = {}
+            resolved_profile = riaction_resolve_param(args[:profile])
+            raise RuntimeError.new("riaction profile missing for instance #{self}") if resolved_profile.nil?
+            unless  resolved_profile.kind_of?(ActiveRecord::Base) && 
+                    resolved_profile.class.riactionary? && 
+                    resolved_profile.class.riaction_profile? &&
+                    resolved_profile.class.riaction_profile_types_defined > 0
+              raise ConfigurationError.new("#{self.class} must provide a riaction profile object for event #{event_name}")
+            end
+            profile_keys = resolved_profile.riaction_profile_keys
+            unless args[:profile_type].nil?
+              if profile_keys[args[:profile_type]].nil?
+                raise ConfigurationError.new("#{resolved_profile.class} does not define profile type #{args[:profile_type]} (see event #{event_name} on #{self.class})")
+              else
+                resolved_hash[event_name][:profile] = {
+                  :type => args[:profile_type],
+                  :id_type => profile_keys[args[:profile_type]].first.first,
+                  :id => profile_keys[args[:profile_type]].first.last
+                }
               end
             else
-              nil
+              resolved_hash[event_name][:profile] = {
+                :type => profile_keys.first.first,
+                :id_type => profile_keys.first.last.first.first,
+                :id => profile_keys.first.last.first.last
+              }
             end
-          else
-            nil
+            resolved_hash[event_name][:params] = riaction_resolve_param(args[:params]).merge(self.class.riaction_options[:default_event_params])
           end
-        else
-          nil
+          resolved_hash
         end
-      rescue KeyError, NoMethodError => e
-        nil
-      end
-    
-      #################
-      #  API wrappers #
-      #################
-    
-      def riaction_profile_summary(achievement_count=nil)
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_summary(keys[:profile_type], keys[:id_type], keys[:id], achievement_count)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
+        
+        def riaction_log_event?(name)
+          riaction_resolve_param self.class.riaction_events.fetch(name)[:guard]
+        rescue KeyError
+          raise ConfigurationError.new("#{self.class} does not define an event named '#{name}'")
         end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-    
-      def riaction_create_profile
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.create_profile(keys[:profile_type], keys[:id_type], keys[:id], riaction_profile_display_name)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      end
-    
-      def riaction_update_profile(new_id_type)
-        old_keys = riaction_profile_keys
-        new_keys = riaction_profile_keys(old_keys[:profile_type], new_id_type)
-        unless old_keys.empty? || new_keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.add_profile_identifier(old_keys[:profile_type], old_keys[:id_type], old_keys[:id], new_keys[:id_type], new_keys[:id])
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      end
-    
-      def riaction_profile_achievements(filter_type=nil)
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_achievements(keys[:profile_type], keys[:id_type], keys[:id], filter_type)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-    
-      def riaction_profile_challenges(filter_type=nil)
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_challenges(keys[:profile_type], keys[:id_type], keys[:id], filter_type)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-    
-      def riaction_profile_goals(filter_type=nil)
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_goals(keys[:profile_type], keys[:id_type], keys[:id], filter_type)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-    
-      def riaction_profile_notifications
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_notifications(keys[:profile_type], keys[:id_type], keys[:id])
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-      
-      def riaction_profile_points(point_type)
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.get_profile_points(keys[:profile_type], keys[:id_type], keys[:id], point_type)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
-      end
-      
-      def riaction_update_profile_points(point_type, amount, reason="")
-        keys = riaction_profile_keys
-        unless keys.empty?
-          @iactionable_api ||= IActionable::Api.new
-          @iactionable_api.update_profile_points(keys[:profile_type], keys[:id_type], keys[:id], point_type, amount, reason)
-        else
-          raise NoProfileDefined.new("Class #{self.class} does not adequately define itself as an IActionable profile")
-        end
-      rescue IActionable::Error::BadRequest => e
-        nil
       end
     end
   end
 end
-
-ActiveRecord::Base.extend ::Riaction::Riaction

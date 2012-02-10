@@ -1,5 +1,12 @@
 # CHANGELOG #
 
+## 1.1.0 ##
+
+* Entire re-spec and re-factor of gem
+* A class may declare multiple profile types
+* Events may specify which profile type of a profile object to use when firing event
+* Backwards-compatible with previous version 
+
 ## 1.0.0 ##
 
 * API return values are now all objects, not mix of key/value pairs and objects.

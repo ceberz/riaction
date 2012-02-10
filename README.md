@@ -1,6 +1,6 @@
 # Overview #
 
-riaction provides both a ruby wrapper for IActionable's restful API and an "acts-as" style interface for the models in your Rails application.  This document assumes knowledge of IActionable's API.
+You've [gamified](http://en.wikipedia.org/wiki/Gamification) your Rails app using IActionable's services, or maybe you're thinking about it.  IActionable offers a restful API to log events from your game; these events ("sign in", "write a review", etc) earn points, achievements and more for the users that perform them.  This gem provides a way to tie these events to the CRUD actions of the ActiveRecord models that make up your restful Rails app.  Through an "acts-as" style mix-in, riaction takes the "write a review" event defined in your IActionable game, and drives it with the actual creation of a review object.  Riaction makes use of the [Ruby-IActionable gem](https://github.com/zortnac/Ruby-IActionable) to connect to the IActionable API.
 
 # How To Use #
 
@@ -8,26 +8,9 @@ riaction provides both a ruby wrapper for IActionable's restful API and an "acts
 
     gem install riaction
 
-## API Wrapper ##
+## Requirements and Dependencies ##
 
-The wrapper for IActionable's API is used internally by the rest of the gem, but also may be used directly if desired.  IActionable's API is restful, and this wrapper takes each resource and HTTP verb of that API and wraps them as a method that takes arguments that match to the resource and query or body parameters.  Before the wrapper can be instantiated or used it must be pre-initialized with your IActionable credentials and version number (IActionable supports older versions but recommends staying up to date):
-
-    IActionable::Api.init_settings( :app_key => "12345",
-                                    :api_key => "abcde",
-                                    :version => 3 )
-    @api = IActionable::Api.new
-
-IActionable's API speaks in JSON, and here those responses are wrapped in simple objects where nesting and variable names are determined by [IActionable's documentation](http://www.iactionable.com/api/).  For example, here the wrapper is making a call to load a profile summary:
-
-    profile_summary = @api.get_profile_summary("user", "username", "zortnac", 10)
-    profile_summary.display_name # => "Chris Eberz"
-    profile_summary.identifiers.first # => instance of IActionable::Objects::Identifier
-    profile_summary.identifiers.first.id_type # => "username"
-    profile_summary.identifiers.first.id # => "zortnac"
-  
-## Using riaction In Rails ##
-
-While the API wrapper in riaction can be used directly (and I ought just pull it out as a separate gem), the rest of riaction consists of an "acts-as" style interface for your application's ActiveRecord models that leverages the API wrapper to associate your models with IActionable profiles and to have IActionable event logging be driven by your models' CRUD actions.  riaction relies on Resque for tasking all of the requests made to IActionable's service.
+Riaction uses [Resque](https://github.com/defunkt/resque) to schedule and perform all requests to IActionable.
 
 ### Generators ###
 
@@ -37,10 +20,10 @@ Riaction comes with a generator for creating a YAML file to contain your credent
 
 ### Declaring A Model As A Profile ###
 
-Models in your application may declare themselves as profiles that exist on IActionable.
+In IActionable's API, events are explicitly tied to the user that generated them; an event cannot exist or be logged that doesn't belong to a user.  In order to log an event for writing a review, we need to decide which model in our application will behave as the "profile" in IActionable's system.  Here our user model will serve that purpose:
 
     class User < ActiveRecord::Base
-      riaction :profile, :type => :player, :username => :nickname, :custom => :id
+      riaction :profile, :type => :player, :custom => :id
     end
     
     # == Schema Information
@@ -50,47 +33,69 @@ Models in your application may declare themselves as profiles that exist on IAct
     #  id                           :integer(4)
     #  nickname                     :string(255)
   
-Here, the class User declares itself as a profile of type "player", identifiable by two of IActionable's supported identifier types, username and custom.  The values of these identifiers are the fields nickname and id, respectively, and can be any method that an instance of the class responds to.  When a class declares itself as a riaction profile, an after_create callback will be added to create the profile on IActionable with the identifiers declared in the class.
+In the above example, the class User declares itself as a profile of type "player".  Profile types are defined on IActionable's account dashboard. Profiles are identifiable by a number of supported identifier types, and in the above example we'll be relying on the "custom" identifier type, which will point to the value of the model's unique key in the database.  In other words, the user in our Rails app with an id of 7 will map to a profile on IActionable of type "player", and a "custom" identifier with a value of "7."
 
-An optional display name can be given, which should be a method that the object responds to:
+By declaring our user class as a riaction profile, an after-create callback will be registered on the class to create the corresponding profile on IActionable.
+
+IActionable's profiles also have a "display name" property which can also be given here, and which should be a method that the object responds to:
 
     class User < ActiveRecord::Base
-      riaction :profile, :type => :player, :username => :nickname, :custom => :id, :display_name => :nickname
-    end
-  
+      riaction :profile, :type => :player, :custom => :id, :display_name => :nickname
+    end  
 
 #### Profile Instance Methods ####
 
-Classes that declare themselves as IActionable profiles are given instance methods that tie in to the IActionable API, as many uses of the API treat the profile as a top-level resource.
+Classes that declare themselves as riaction profiles are given instance methods that hit various points in the IActionable API for loading a profile's data from the game, using the [Ruby-IActionable gem](https://github.com/zortnac/Ruby-IActionable).
 
-    @api.get_profile_summary("player", "username", "zortnac", 10)
-    # is equivalent to the following...
+    @user_instance = User.first
+    
+    # return the user's profile summary and (up to) 10 of their recent achievements
     @user_instance.riaction_profile_summary(10)
     
-    @api.get_profile_challenges("player", "username", "zortnac", :completed)
-    # is equivalent to the following...
+    # return the user's summary of challenges, limited to the ones already completed
     @user_instance.riaction_profile_challenges(:completed)
+
+#### Multiple Profile Types ####
+
+Riaction will support a model in your app to map to multiple profiles defined in IActionable, if your situation calls for that:
+
+    class User < ActiveRecord::Base
+      riaction :profile, :type => :light_world_player, :custom => :id
+      riaction :profile, :type => :dark_world_player, :custom => :id
+    end
     
-    @api.add_profile_identifier("player", "username", "zortnac", "custom", 42)
-    # is equivalent to the following...
-    @user_instance.riaction_update_profile(:custom)
+    # == Schema Information
+    #
+    # Table name: users
+    #
+    #  id                           :integer(4)
+    #  nickname                     :string(255)
+
+In the above example we want to define our user model as two types of players in our (apparently Zelda-inspired) game.  The model will behave exactly as it would with only a single profile declared, and the first one declared ( `:light_world_player` ) will always be the default used, unless a different profile type is set explicitly:
+
+    @user_instance.riaction_set_profile(:dark_world_player)
+
+Setting the profile type only affects the instance it is called on, and the change will persist for the life of the object or until changed again.
 
 ### Declaring Events ###
 
-Models in your application may declare any number of events that they wish to log through IActionable.  For each event that is declared the important elements are:
+Models in your application may declare any number of events that they wish to log through IActionable.  Just as an event on IActionable must belong to a profile, in this example the model generating the event belongs to the model that behaves as a profile:
 
-* The event's name (or key).
-* The type of trigger that causes the event to be logged.
-* The profile under which the event is logged.
-* Any optional parameters (key-value pairs) that you want to pass.
-
-<!-- end list --> 
-
-    class Comment
+    class Review
       belongs_to :user
-      belongs_to :post
       
-      riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => {:post => :post_id}
+      riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user
+      
+      def length
+        text.size
+      end
+      
+      def stats
+        {
+          :length => text.length,
+          :rating => stars
+        }
+      end
     end
     
     # == Schema Information
@@ -99,19 +104,63 @@ Models in your application may declare any number of events that they wish to lo
     #
     #  id                           :integer(4)
     #  user_id                      :integer(4)
-    #  post_id                      :integer(4)
+    #  stars                        :integer(4)
+    #  text                         :string(255)
 
-Here, the name of the event is `make_a_comment`.  The trigger for the event, in this case, is `:create`, which will add an after_create callback to log the event to the API.  
+In the above example, `:write_a_review` is the name of the event and should match the key used on IActionable.  The value for `:trigger` determines the action that will cause the event to fire, and can also be `:update` or `:destroy`, and will automatically fire when a record is created, updated, or destroyed, respectively. The value given to `:profile` should return the riaction profile object that this event will be logged under.
 
-_Note: If the trigger is one of :create, :update, or :destroy, then the appropriate ActiveRecord callback will log the event.  If the trigger is anything else, then an instance method is provided to log the event by hand.  For example, an argument of `:trigger => :foo` will provide an instance method `trigger_foo!`_
+#### Event Parameters ####
 
-The profile that this event will be logged under can be any object whose class declares itself as a profile.  Here, the profile is the object returned by the ActiveRecord association `:user` (for this example we assume this is an instance of the User class from above).  Lastly, the optional params passed along with the event is the key-value pair `{:post => :post_id}`, where `:post_id` is an ActiveRecord table column.
+Part of the power in the way IActionable may be configured to process your events is in the key-value parameters you can send along with the event itself.  Riaction allows you to define an event with these parameters.  Parameters may be a hash with static values:
 
-Putting this all together, whenever an instance of the Comment class is created, an event is logged for which the equivalent call to the API might look like this:
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => {:foo => 'bar'}
 
-    @api.log_event("player", "username", "zortnac", "make_a_comment", {:post => 33})
+...a hash where some values reference methods:
 
-_Note: If a class declares itself as a profile and also declares one or more events, but wants to refer to itself as the profile for any of those events, use `:profile => :self` in the event's declaration_
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => {:review_length => :length}
+
+...a proc:
+
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => Proc.new{|record| {:length => record.text.length}}
+
+...or the name of an instance method (which ought to return a hash)
+
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => :stats
+
+#### Conditional Events ####
+
+The logging of an event may be conditional:
+
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :if => Proc.new{|record| record.stars > 3}
+
+...where the value of `:if` may be an instance method or a proc.
+
+### Things To Note ###
+
+#### Non-CRUD Actions ####
+
+Sometimes when create, update, and destroy just don't really make sense for the event, custom triggers may be declared:
+
+    riaction :event, :name => :receive_thumbs_up, :trigger => :thumbs_up, :profile => :user
+
+In the above example, in order to have the review fire an event when it gets a thumbs up from another user, we declare a trigger called `:thumbs_up`.  Since this won't be fired automatically like a CRUD action, an instance method will be provided to fire it by hand:
+
+    @review_instance.trigger_thumbs_up!
+
+#### Events and Multiple Profile Types ####
+
+If the object given as the riaction profile for an event defines more than one profile type, the default profile type (the first one declared in the class) will be used.  To use a different one, pass in the name of the alternate type:
+
+    riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :profile_type => :dark_world_player
+
+#### Profiles With Their Own Events ####
+
+A class the declares itself as a profile may also declare events which rely on that same class as the profile object:
+
+    riaction :profile, :type => :player, :custom => :id
+    riaction :event, :name => :join_the_game, :trigger => :create, :profile => :self
+
+In the above example of a declaration on the User class, the user will fire a `:join_the_game` event using itself as the profile upon its creation.  The profile declaration should come before the event declaration.
 
 ### Rails Rake Tasks ###
 

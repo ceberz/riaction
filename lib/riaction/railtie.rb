@@ -19,5 +19,9 @@ module Riaction
         # warn of malformed credentials file
       end
     end
+    
+    initializer "riaction_railtie.extend.active_record" do |app|
+      ActiveRecord::Base.extend(::Riaction::Riaction::ClassMethods) if defined?(ActiveRecord)
+    end
   end
 end
