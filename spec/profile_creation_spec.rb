@@ -72,6 +72,36 @@ describe "automatic profile creation from riaction definitions:" do
       end
     end
     
+    describe "when a class declares an optional display name" do
+      describe "as a method" do
+        before do
+          User.class_eval do
+            riaction :profile, :type => :player, :custom => :id, :display_name => :name
+          end
+          @user = User.riactionless{ User.create(:name => 'zortnac') }
+        end
+        
+        it "should use the API wraper to create the profile with that display name" do
+          @api.should_receive(:create_profile).once.with('player', 'custom', @user.id.to_s, @user.name)
+          ::Riaction::ProfileCreator.perform('User', @user.id)
+        end
+      end
+      
+      describe "as a proc" do
+        before do
+          User.class_eval do
+            riaction :profile, :type => :player, :custom => :id, :display_name => Proc.new{|record| record.name}
+          end
+          @user = User.riactionless{ User.create(:name => 'zortnac') }
+        end
+        
+        it "should use the API wraper to create the profile with that display name" do
+          @api.should_receive(:create_profile).once.with('player', 'custom', @user.id.to_s, @user.name)
+          ::Riaction::ProfileCreator.perform('User', @user.id)
+        end
+      end
+    end
+    
     describe "when the class does not actually define itself as a riaction profile" do
       before do
         @user = User.create(:name => 'zortnac')

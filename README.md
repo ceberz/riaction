@@ -8,6 +8,10 @@ You've [gamified](http://en.wikipedia.org/wiki/Gamification) your Rails app usin
 
     gem install riaction
 
+## Requirements and Dependencies ##
+
+Riaction uses [Resque](https://github.com/defunkt/resque) to schedule and perform all requests to IActionable.
+
 ### Generators ###
 
 Riaction comes with a generator for creating a YAML file to contain your credentials for each environment of your application.  The YAML file is necessary for riaction to run correctly in your rails app.

@@ -76,12 +76,13 @@ module Riaction
           end
           
           def add_or_update_riaction_profile(type, opts)
-            display_name_option = opts.delete(:display_name)
+            display_name = opts.delete(:display_name) || nil
+            riaction_check_type(:display_name, display_name, [Symbol, Proc, NilClass])
             unless opts.keys.any?{|type| ::Riaction::Constants.supported_identifier_types.include?(type)}
               raise ConfigurationError.new("#{self.to_s} defining a riaction profile must use supported IActionable types: #{::Riaction::Constants.supported_identifier_types.map(&:to_s).join(", ")}")
             end
             riaction_profile_keys.store(type, {
-              :display_name => display_name_option,
+              :display_name => display_name,
               :identifiers => opts
             })
             @riaction_use_profile ||= type
@@ -226,6 +227,12 @@ module Riaction
           self
         end
         
+        def riaction_profile_display_name
+          riaction_resolve_param self.class.riaction_profile_keys.fetch(@riaction_use_profile)[:display_name]
+        rescue KeyError => e
+          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
+        end
+        
         #################
         #  API wrappers #
         #################
@@ -301,12 +308,6 @@ module Riaction
         end
         
         private
-        
-        def riaction_profile_display_name
-          riaction_resolve_param self.class.riaction_profile_keys.fetch(@riaction_use_profile)[:display_name]
-        rescue KeyError => e
-          raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
-        end
         
         def riaction_use_profile
           @riaction_use_profile || self.class.riaction_use_profile

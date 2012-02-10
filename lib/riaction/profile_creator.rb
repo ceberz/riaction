@@ -14,7 +14,7 @@ module Riaction
         record.riaction_profile_keys.each_pair do |profile_type, ids|
           identifiers = ids.to_a
           first_defined = identifiers.shift
-          iactionable_api.create_profile(profile_type.to_s, first_defined.first.to_s, first_defined.last.to_s, nil)
+          iactionable_api.create_profile(profile_type.to_s, first_defined.first.to_s, first_defined.last.to_s, record.riaction_set_profile(profile_type).riaction_profile_display_name )
           identifiers.each do |identifier|
             iactionable_api.add_profile_identifier(profile_type.to_s, first_defined.first.to_s, first_defined.last.to_s, identifier.first.to_s, identifier.last.to_s)
           end
