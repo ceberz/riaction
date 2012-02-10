@@ -7,7 +7,7 @@ namespace 'riaction' do
           require rbfile
         end
       
-        Riaction::Riaction::EVENT_LOGGING_CLASSES.each do |class_name|
+        Riaction::Riaction::EVENT_CLASSES.each do |class_name|
           klass = class_name.constantize
           puts "#{klass} defines the following events:"
           klass.riaction_events.each_pair do |name, deets|
@@ -17,6 +17,7 @@ namespace 'riaction' do
             else
               puts "    Trigger: By calling :trigger_#{deets[:trigger]}!"
             end
+            
             case deets[:profile]
             when Symbol
               if deets[:profile] == :self
@@ -27,6 +28,14 @@ namespace 'riaction' do
             when Proc
               puts "    Profile: Returned via Proc"
             end
+            
+            case deets[:profile_type]
+            when Symbol
+              puts "    Profile Type: #{deets[:profile_type]}"
+            when NilClass
+              puts "    Profile Type: uses default"
+            end
+            
             case deets[:params]
             when NilClass
               puts "    Event Params: None"
@@ -37,6 +46,7 @@ namespace 'riaction' do
             when Hash
               puts "    Event Params: #{deets[:params]}"
             end
+            
             case deets[:guard]
             when NilClass
               puts "    Guard: None"
@@ -78,20 +88,12 @@ namespace 'riaction' do
       
         Riaction::Riaction::PROFILE_CLASSES.each do |class_name|
           klass = class_name.constantize
-          begin
-            klass.all.each do |obj|
-              declaration = klass.riaction_profiles.first
-              puts "Addressing #{klass} record #{obj.id}; creating profile under type '#{declaration[0]}'"
-              obj.riaction_create_profile
-              default_keys = obj.riaction_profile_keys(declaration[0])
-              declaration[1].each_pair do |id_type, id|
-                value = obj.send(id)
-                puts "...updating profile with id type #{id_type} and value #{value}"
-                obj.riaction_update_profile(id_type)
-              end
+          if (klass.riactionary? && klass.riaction_profile? && klass.riaction_profile_types_defined > 0)
+            puts "Addressing #{class_name}: defines the profile(s) #{klass.riaction_profile_keys.keys.map(&:to_s).join(', ')}"
+            klass.select(:id).all.each do |obj|
+              puts "  Addressing record ##{obj.id};"
+              ::Riaction::ProfileCreator.perform(class_name, obj.id)
             end
-          rescue Riaction::NoProfileDefined => e
-            puts "ERROR: #{klass} does not properly define a profile; skipping"
           end
         end
       end
