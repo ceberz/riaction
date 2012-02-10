@@ -342,14 +342,6 @@ describe "Riaction" do
         @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
       end
       
-      describe "with the same event name" do
-        before do
-          Comment.class_eval do
-            riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :player, :params => {:are => 'different'}
-          end
-        end
-      end
-      
       it "should store the event name and options and make them available as key/valyes through an instance method" do
         hash_including({
           :make_a_comment => {
@@ -895,6 +887,37 @@ describe "Riaction" do
         rescue Exception => e
         end
         @comment.trigger_like!
+      end
+    end
+  end
+ 
+  describe "defining special riaction options on an AR class" do
+    describe "that add default params to all events" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
+          riaction :profile, :type => :npc, :username => :name, :custom => :id
+        end
+        @user = User.riactionless{ User.create(:name => 'zortnac') }
+        
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => {:foo => 'bar'}
+          riaction :option, :default_event_params => {:extra => 'params'}
+        end
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      end
+      
+      it "should add those default params to all events without changing the events own params" do
+        hash_including({
+          :make_a_comment => {
+            :profile => {
+              :type => :player,
+              :id_type => :custom,
+              :id => @user.id
+            },
+            :params => {:foo => 'bar', :extra => 'params'} 
+          }
+        }).should == @comment.riaction_event_params
       end
     end
   end

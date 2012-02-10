@@ -16,14 +16,18 @@ module Riaction
     EVENT_CLASSES = []
     
     module ClassMethods
-      def riaction(object_type, opts)
+      def riaction(type, opts)
         establish_riactionary_class unless riactionary?
-        if object_type == :profile
+        if type == :profile
           establish_riactionary_profile_class unless riaction_profile?
           add_or_update_riaction_profile(opts.delete(:type), opts)
-        elsif object_type == :event
+        elsif type == :event
           establish_riactionary_event_class unless riaction_events?
           add_or_update_riaction_event(opts.delete(:name), opts)
+        elsif type == :option || type == :options
+          opts.each_pair do |option, value|
+            riaction_options[option] = value if ::Riaction::Constants.riaction_options.has_key?(option)
+          end
         end
       end
 
@@ -45,6 +49,10 @@ module Riaction
             @riaction_events ||= {}
           end
           
+          def riaction_options
+            @riaction_options ||= ::Riaction::Constants.riaction_options
+          end
+          
           def riaction_use_profile
             @riaction_use_profile ||= nil
           end
@@ -63,6 +71,7 @@ module Riaction
           def reset_riaction
             riaction_profile_keys.clear
             riaction_events.clear
+            riaction_options.merge!(::Riaction::Constants.riaction_options)
             @riaction_use_profile = nil
           end
           
@@ -337,7 +346,7 @@ module Riaction
                 :id => profile_keys.first.last.first.last
               }
             end
-            resolved_hash[event_name][:params] = riaction_resolve_param(args[:params])
+            resolved_hash[event_name][:params] = riaction_resolve_param(args[:params]).merge(self.class.riaction_options[:default_event_params])
           end
           resolved_hash
         end
