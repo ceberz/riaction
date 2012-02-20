@@ -107,7 +107,14 @@ Models in your application may declare any number of events that they wish to lo
     #  stars                        :integer(4)
     #  text                         :string(255)
 
-In the above example, `:write_a_review` is the name of the event and should match the key used on IActionable.  The value for `:trigger` determines the action that will cause the event to fire, and can also be `:update` or `:destroy`, and will automatically fire when a record is created, updated, or destroyed, respectively. The value given to `:profile` should return the riaction profile object that this event will be logged under.
+In the above example: 
+
+* `:write_a_review` is the name of the event and should match the key used on IActionable.  
+* The value for `:trigger` determines the action that will cause the event to fire, and can also be `:update` or `:destroy`, and will automatically fire when a record is created, updated, or destroyed, respectively.
+* **If the value for `:trigger` is not given, `:create` will be assumed.**
+* The value given to `:profile` should return the riaction profile object that this event will be logged under.
+
+<!-- end list -->
 
 #### Event Parameters ####
 
@@ -123,7 +130,7 @@ Part of the power in the way IActionable may be configured to process your event
 
     riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => Proc.new{|record| {:length => record.text.length}}
 
-...or the name of an instance method (which ought to return a hash)
+...or the name of an instance method (which ought to return a hash):
 
     riaction :event, :name => :write_a_review, :trigger => :create, :profile => :user, :params => :stats
 
@@ -155,12 +162,12 @@ If the object given as the riaction profile for an event defines more than one p
 
 #### Profiles With Their Own Events ####
 
-A class the declares itself as a profile may also declare events which rely on that same class as the profile object:
+A class that declares itself as a profile may also declare events, and for those events it may point to itself as the profile to use:
 
     riaction :profile, :type => :player, :custom => :id
     riaction :event, :name => :join_the_game, :trigger => :create, :profile => :self
 
-In the above example of a declaration on the User class, the user will fire a `:join_the_game` event using itself as the profile upon its creation.  The profile declaration should come before the event declaration.
+In the above example of a declaration on the User class, the user will fire a `:join_the_game` event using itself as the profile upon its creation.  _The profile declaration must come before the event declaration._
 
 #### Turning Riaction Off ####
 

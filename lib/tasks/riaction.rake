@@ -10,6 +10,7 @@ namespace 'riaction' do
         Riaction::Riaction::EVENT_CLASSES.each do |class_name|
           klass = class_name.constantize
           puts "#{klass} defines the following events:"
+          opts = klass.riaction_options
           klass.riaction_events.each_pair do |name, deets|
             puts " :#{name}:"
             if Riaction::Constants.crud_actions.include? deets[:trigger]
@@ -45,6 +46,17 @@ namespace 'riaction' do
               puts "    Event Params: Hash returned via Proc"
             when Hash
               puts "    Event Params: #{deets[:params]}"
+            end
+            
+            if opts[:default_event_params].present?
+              case opts[:default_event_params]
+              when Symbol
+                puts "      Params included by default: Hash returned by :#{opts[:default_event_params]}"
+              when Proc
+                puts "      Params included by default: Hash returned via Proc"
+              when Hash
+                puts "      Params included by default: #{opts[:default_event_params]}"
+              end
             end
             
             case deets[:guard]
