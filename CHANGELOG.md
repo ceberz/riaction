@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 1.2.0 ##
+
+* Added rspec matchers
+* rake task to list all defined events also shows default params
+
 ## 1.1.0 ##
 
 * Entire re-spec and re-factor of gem
