@@ -187,9 +187,13 @@ To see a report of all the profiles declared across your application, run the fo
 
     rake riaction:rails:list:profiles
 
-Finally, to process all of the models in your application that declare themselves as profiles and initialize them on IActionable (for instance if you've added IActionable to an existing application with an established user base), run the following:
+To process all of the models in your application that declare themselves as profiles and initialize them on IActionable (for instance if you've added IActionable to an existing application with an established user base), run the following:
 
     rake riaction:rails:process:profiles
+
+To run a specific event on all instances off a class that define that event:
+
+    rake riaction:rails:process:event['ClassName', :event_name]
 
 ----------------
 
@@ -197,6 +201,7 @@ Finally, to process all of the models in your application that declare themselve
 
 [Visit their website!](http://www.iactionable.com)
 
-## Author ##
+## Authors ##
 
 Christopher Eberz; chris@chriseberz.com; @zortnac
+Katie Miller; kmiller@elctech.com

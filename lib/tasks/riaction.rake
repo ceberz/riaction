@@ -111,7 +111,7 @@ namespace 'riaction' do
       end
       
       desc "Process a specified event on a specified class (requires EVENT_CLASS and EVENT_NAME)"
-      task :events => :environment do
+      task :event => :environment do
         klass_name = ENV['EVENT_CLASS']
         event_symbol = ENV['EVENT_NAME'].to_sym
         begin
