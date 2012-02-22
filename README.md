@@ -204,4 +204,5 @@ To run a specific event on all instances off a class that define that event:
 ## Authors ##
 
 Christopher Eberz; chris@chriseberz.com; @zortnac
+
 Katie Miller; kmiller@elctech.com
