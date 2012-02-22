@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.2.1 ##
+
+* Added rake task to run an event on all records in a class
+
 ## 1.2.0 ##
 
 * Added rspec matchers
