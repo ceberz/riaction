@@ -160,7 +160,7 @@ module Riaction
 
         include ::Riaction::Riaction::Profile::InstanceMethods
 
-        after_create ::Riaction::ProfileCreationCallback.new({})
+        after_create ::Riaction::ProfileCreationCallback.new
       end
       
       def establish_riactionary_event_class

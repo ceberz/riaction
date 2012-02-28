@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.2.4 ##
+
+* fixing argument error in riaction.rb
+
 ## 1.2.3 ##
 
 * Fixing bug with default params for riaction events not being evaluated correctly as methods
