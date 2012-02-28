@@ -26,7 +26,14 @@ module Riaction
           add_or_update_riaction_event(opts.delete(:name), opts)
         elsif type == :option || type == :options
           opts.each_pair do |option, value|
-            riaction_options[option] = value if ::Riaction::Constants.riaction_options.has_key?(option)
+            if ::Riaction::Constants.riaction_options.has_key?(option)
+              # merge hashes, replace all else;
+              if riaction_options[option].is_a? Hash
+                riaction_options[option].merge! value
+              else
+                riaction_options[option] = value
+              end
+            end
           end
         end
       end
@@ -347,7 +354,7 @@ module Riaction
                 :id => profile_keys.first.last.first.last
               }
             end
-            resolved_hash[event_name][:params] = riaction_resolve_param(args[:params]).merge(self.class.riaction_options[:default_event_params])
+            resolved_hash[event_name][:params] = riaction_resolve_param(args[:params]).merge(riaction_resolve_param(self.class.riaction_options[:default_event_params]))
           end
           resolved_hash
         end

@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 1.2.3 ##
+
+* Fixing bug with default params for riaction events not being evaluated correctly as methods
+* Multiple calls to setting the default params will merge, and not replace one-another
+
 ## 1.2.2 ##
 
 * Fixed bug in event performer when perform() received event name as a string rather than a symbol

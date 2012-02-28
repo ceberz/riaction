@@ -903,6 +903,11 @@ describe "Riaction" do
         Comment.class_eval do
           riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :params => {:foo => 'bar'}
           riaction :option, :default_event_params => {:extra => 'params'}
+          riaction :option, :default_event_params => {:stars => :star_count}
+          
+          def star_count
+            'five'
+          end
         end
         @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
       end
@@ -915,7 +920,7 @@ describe "Riaction" do
               :id_type => :custom,
               :id => @user.id
             },
-            :params => {:foo => 'bar', :extra => 'params'} 
+            :params => {:foo => 'bar', :extra => 'params', :stars => 'five'} 
           }
         }).should == @comment.riaction_event_params
       end
