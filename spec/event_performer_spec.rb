@@ -224,6 +224,25 @@ describe "sending an event to IActionable from the name of a riaction class and 
         ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
       end
     end
+  
+    describe "when the arguments passed to perform() are all strings" do
+      before do
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc
+        end
+        
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      end
+      
+      it "should behave correctly and without error" do
+        @api.should_receive(:log_event).once.with(@comment.riaction_event_params[:make_a_comment][:profile][:type], 
+                                                  @comment.riaction_event_params[:make_a_comment][:profile][:id_type],
+                                                  @comment.riaction_event_params[:make_a_comment][:profile][:id],
+                                                  :make_a_comment, 
+                                                  {})
+        lambda {::Riaction::EventPerformer.perform('make_a_comment', 'Comment', @comment.id.to_s)}.should_not raise_error
+      end
+    end
   end
   
   after do

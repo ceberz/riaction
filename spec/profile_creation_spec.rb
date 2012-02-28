@@ -126,6 +126,20 @@ describe "automatic profile creation from riaction definitions:" do
         ::Riaction::ProfileCreator.perform('User', @user.id, 0)
       end
     end
+  
+    describe "when the arguments passed to perform are all strings" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id
+        end
+        @user = User.riactionless{ User.create(:name => 'zortnac') }
+      end
+      
+      it "it should behave normally and without error" do
+        @api.should_receive(:create_profile).once.with('player', 'custom', @user.id.to_s, nil)
+        lambda {::Riaction::ProfileCreator.perform('User', @user.id.to_s)}.should_not raise_error
+      end
+    end
   end
   
   after do

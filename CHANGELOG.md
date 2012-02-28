@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.2.2 ##
+
+* Fixed bug in event performer when perform() received event name as a string rather than a symbol
+
 ## 1.2.1 ##
 
 * Added rake task to run an event on all records in a class
