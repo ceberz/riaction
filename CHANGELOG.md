@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.2.5 ##
+
+* fixing bug with optional display name argument in profiles
+
 ## 1.2.4 ##
 
 * fixing argument error in riaction.rb

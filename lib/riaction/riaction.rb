@@ -235,7 +235,7 @@ module Riaction
         end
         
         def riaction_profile_display_name
-          riaction_resolve_param self.class.riaction_profile_keys.fetch(@riaction_use_profile)[:display_name]
+          riaction_resolve_param self.class.riaction_profile_keys.fetch(riaction_use_profile)[:display_name]
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         end

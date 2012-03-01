@@ -261,6 +261,19 @@ describe "Riaction" do
       end
     end
 
+    describe "and specifying an optional display name" do
+      before do
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id, :display_name => :name
+        end
+      end
+      
+      it "should return the correct value for the display name" do
+        user = User.riactionless{ User.create(:name => 'zortnac') }
+        user.riaction_profile_display_name.should == 'zortnac'
+      end
+    end
+
     describe "and being invoked upon a record's creation" do
       before do
         User.class_eval do
