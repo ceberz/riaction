@@ -126,6 +126,36 @@ describe "automatic profile creation from riaction definitions:" do
         ::Riaction::ProfileCreator.perform('User', @user.id, 0)
       end
     end
+    
+    describe "when the call to IActionable, through API wrapper, times out" do
+      before do
+        @api.stub!(:create_profile).and_raise(Timeout::Error)
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id, :username => :name
+        end
+        @user = User.riactionless{ User.create(:name => 'zortnac') }
+      end
+      
+      it "should re-enqueue the job with an attempt count" do
+        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", @user.id, 1)
+        ::Riaction::ProfileCreator.perform('User', @user.id, 0)
+      end
+    end
+    
+    describe "when the call to IActionable, through API wrapper, times out with a faraday-wrapped timeout" do
+      before do
+        @api.stub!(:create_profile).and_raise(Faraday::Error::TimeoutError.new(""))
+        User.class_eval do
+          riaction :profile, :type => :player, :custom => :id, :username => :name
+        end
+        @user = User.riactionless{ User.create(:name => 'zortnac') }
+      end
+      
+      it "should re-enqueue the job with an attempt count" do
+        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", @user.id, 1)
+        ::Riaction::ProfileCreator.perform('User', @user.id, 0)
+      end
+    end
   
     describe "when the arguments passed to perform are all strings" do
       before do

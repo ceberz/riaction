@@ -224,6 +224,36 @@ describe "sending an event to IActionable from the name of a riaction class and 
         ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
       end
     end
+    
+    describe "when the call to IActionable, through API wrapper, times out" do
+      before do
+        @api.stub!(:log_event).and_raise(Timeout::Error)
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
+        end
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      end
+      
+      it "should re-enqueue the job with an attempt count" do
+        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id, 1)
+        ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+      end
+    end
+    
+    describe "when the call to IActionable, through API wrapper, times out with a faraday-wrapped timeout" do
+      before do
+        @api.stub!(:log_event).and_raise(Faraday::Error::TimeoutError.new(""))
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
+        end
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+      end
+      
+      it "should re-enqueue the job with an attempt count" do
+        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id, 1)
+        ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+      end
+    end
   
     describe "when the arguments passed to perform() are all strings" do
       before do

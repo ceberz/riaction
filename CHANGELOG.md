@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.2.6 ##
+
+* resque jobs will re-enqeue on a timeout error
+
 ## 1.2.5 ##
 
 * fixing bug with optional display name argument in profiles

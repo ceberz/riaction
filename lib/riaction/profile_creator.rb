@@ -27,7 +27,7 @@ module Riaction
     rescue IActionable::Error::BadRequest => e
       # This should only be thrown if the profile type names specified in the model don't match what's on IActionable's dashboard 
       raise e
-    rescue IActionable::Error::Internal => e
+    rescue IActionable::Error::Internal, Faraday::Error::TimeoutError, Timeout::Error => e
       # upon an intenal error from IActionable, retry some set number of times by requeueing the task through Resque 
       # after the max number of attempts, re-raise
       if attempt < ::Riaction::Constants.retry_attempts_for_internal_error

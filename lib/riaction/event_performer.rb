@@ -26,7 +26,7 @@ module Riaction
       # event_object no longer exists; no means to recover
     rescue IActionable::Error::BadRequest => e
       # Log event should never throw this as of IActionable API v3
-    rescue IActionable::Error::Internal => e
+    rescue IActionable::Error::Internal, Faraday::Error::TimeoutError, Timeout::Error => e
       # upon an intenal error from IActionable, retry some set number of times by requeueing the task through Resque 
       # after the max number of attempts, re-raise
       if attempt < ::Riaction::Constants.retry_attempts_for_internal_error
