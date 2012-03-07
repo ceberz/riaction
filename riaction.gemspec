@@ -22,6 +22,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rspec", ">= 2.8"
   s.add_development_dependency "sqlite3"
   s.add_development_dependency "ruby-debug19"
+  s.add_development_dependency "yard"
+  s.add_development_dependency "redcarpet"
   
   s.add_runtime_dependency "rake"
   s.add_runtime_dependency "activerecord", ">= 3.0.0"
