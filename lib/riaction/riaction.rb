@@ -38,8 +38,11 @@ module Riaction
         end
       end
 
+      # Patches a class to turn it into a riactionary class, providing some default checks and attributes
       def establish_riactionary_class
         class << self
+
+          # returns true if a class has riaction setup
           def riactionary?
             true
           end

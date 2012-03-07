@@ -123,7 +123,10 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Sends an event to IActionable based on the name of a riaction class and the
+ID used to locate the instance.</p>
+</div></span>
   
 </li>
 
@@ -144,15 +147,26 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>Sends an event to IActionable based on the name of a riaction class and the
+ID used to locate the instance</p>
+
+<p>@<a href="http://String">param</a> event_name something</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-8
-9
-10
 11
 12
 13
@@ -179,10 +193,13 @@
 34
 35
 36
-37</pre>
+37
+38
+39
+40</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/event_performer.rb', line 8</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/event_performer.rb', line 11</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_perform'>perform</span><span class='lparen'>(</span><span class='id identifier rubyid_event_name'>event_name</span><span class='comma'>,</span> <span class='id identifier rubyid_klass_name'>klass_name</span><span class='comma'>,</span> <span class='id identifier rubyid_id'>id</span><span class='comma'>,</span> <span class='id identifier rubyid_attempt'>attempt</span><span class='op'>=</span><span class='int'>0</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_event_name_sym'>event_name_sym</span> <span class='op'>=</span> <span class='id identifier rubyid_event_name'>event_name</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span>
@@ -224,7 +241,7 @@
 </div>
     
     <div id="footer">
-  Generated on Tue Mar  6 21:35:45 2012 by 
+  Generated on Tue Mar  6 21:48:13 2012 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.5 (ruby-1.9.3).
 </div>

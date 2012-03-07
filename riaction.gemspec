@@ -5,9 +5,9 @@ require "riaction/version"
 Gem::Specification.new do |s|
   s.name        = "riaction"
   s.version     = Riaction::VERSION
-  s.authors     = ["Chris Eberz"]
+  s.authors     = ["Chris Eberz", "Katie Miller", "Nicholas Audo"]
   s.email       = ["ceberz@elctech.com"]
-  s.homepage    = ""
+  s.homepage    = "https://github.com/zortnac/riaction/"
   s.summary     = %q{Wrapper for IActionable's restful API and an "acts-as" style interface for models to behave as profiles and drive game events.}
   s.description = %q{Wrapper for IActionable's restful API and an "acts-as" style interface for models to behave as profiles and drive game events.}
 

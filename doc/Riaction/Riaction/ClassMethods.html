@@ -108,7 +108,10 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Patches a class to turn it into a riactionary class, providing some default
+checks and attributes.</p>
+</div></span>
   
 </li>
 
@@ -255,13 +258,24 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>Patches a class to turn it into a riactionary class, providing some default
+checks and attributes</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-41
 42
 43
 44
@@ -370,14 +384,19 @@
 147
 148
 149
-150</pre>
+150
+151
+152
+153</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 41</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 42</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_establish_riactionary_class'>establish_riactionary_class</span>
   <span class='kw'>class</span> <span class='op'>&lt;&lt;</span> <span class='kw'>self</span>
-    <span class='kw'>def</span> <span class='id identifier rubyid_riactionary?'>riactionary?</span>
+
+    <span class='comment'># returns true if a class has riaction setup
+</span>    <span class='kw'>def</span> <span class='id identifier rubyid_riactionary?'>riactionary?</span>
       <span class='kw'>true</span>
     <span class='kw'>end</span>
     
@@ -503,9 +522,6 @@
       <pre class="lines">
 
 
-166
-167
-168
 169
 170
 171
@@ -517,10 +533,13 @@
 177
 178
 179
-180</pre>
+180
+181
+182
+183</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 166</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_establish_riactionary_event_class'>establish_riactionary_event_class</span>
   <span class='lparen'>(</span><span class='op'>::</span><span class='const'>Riaction</span><span class='op'>::</span><span class='const'>Riaction</span><span class='op'>::</span><span class='const'>EVENT_CLASSES</span> <span class='op'>&lt;&lt;</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_uniq!'>uniq!</span>
@@ -555,9 +574,6 @@
       <pre class="lines">
 
 
-152
-153
-154
 155
 156
 157
@@ -567,10 +583,13 @@
 161
 162
 163
-164</pre>
+164
+165
+166
+167</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 152</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 155</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_establish_riactionary_profile_class'>establish_riactionary_profile_class</span>
   <span class='lparen'>(</span><span class='op'>::</span><span class='const'>Riaction</span><span class='op'>::</span><span class='const'>Riaction</span><span class='op'>::</span><span class='const'>PROFILE_CLASSES</span> <span class='op'>&lt;&lt;</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_uniq!'>uniq!</span>
@@ -689,12 +708,12 @@
       <pre class="lines">
 
 
-190
-191
-192</pre>
+193
+194
+195</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 190</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 193</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_riaction_events?'>riaction_events?</span>
   <span class='kw'>false</span>
@@ -739,12 +758,12 @@
       <pre class="lines">
 
 
-186
-187
-188</pre>
+189
+190
+191</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 186</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 189</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_riaction_profile?'>riaction_profile?</span>
   <span class='kw'>false</span>
@@ -789,12 +808,12 @@
       <pre class="lines">
 
 
-182
-183
-184</pre>
+185
+186
+187</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 182</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/riaction.rb', line 185</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_riactionary?'>riactionary?</span>
   <span class='kw'>false</span>
@@ -809,7 +828,7 @@
 </div>
     
     <div id="footer">
-  Generated on Tue Mar  6 21:35:45 2012 by 
+  Generated on Tue Mar  6 22:00:20 2012 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.5 (ruby-1.9.3).
 </div>

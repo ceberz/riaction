@@ -5,7 +5,7 @@ module Riaction
   class EventPerformer
     @queue = :riaction_event_logger
 
-    def self.perform(event_name, klass_name, id, attempt=0)
+    # Sends an event to IActionable based on the name of a riaction class and the ID used to locate the instance
       event_name_sym = event_name.to_sym
       iactionable_api = IActionable::Api.new
       event_object = klass_name.constantize.find_by_id!(id)

@@ -123,7 +123,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Enqueue a Riaction::ProfileCreatore object in resque.</p>
+</div></span>
   
 </li>
 
@@ -144,18 +146,29 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>Enqueue a Riaction::ProfileCreatore object in resque</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-6
-7
-8</pre>
+8
+9
+10</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/profile_creation_callback.rb', line 6</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/profile_creation_callback.rb', line 8</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_after_create'>after_create</span><span class='lparen'>(</span><span class='id identifier rubyid_record'>record</span><span class='rparen'>)</span>
   <span class='const'>Resque</span><span class='period'>.</span><span class='id identifier rubyid_enqueue'>enqueue</span><span class='lparen'>(</span><span class='op'>::</span><span class='const'>Riaction</span><span class='op'>::</span><span class='const'>ProfileCreator</span><span class='comma'>,</span> <span class='id identifier rubyid_record'>record</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_base_class'>base_class</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='id identifier rubyid_record'>record</span><span class='period'>.</span><span class='id identifier rubyid_id'>id</span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='id identifier rubyid_record'>record</span><span class='period'>.</span><span class='id identifier rubyid_class'>class</span><span class='period'>.</span><span class='id identifier rubyid_riactionless?'>riactionless?</span>
@@ -170,7 +183,7 @@
 </div>
     
     <div id="footer">
-  Generated on Tue Mar  6 21:35:45 2012 by 
+  Generated on Tue Mar  6 22:00:20 2012 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.5 (ruby-1.9.3).
 </div>

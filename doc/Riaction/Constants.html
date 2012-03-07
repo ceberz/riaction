@@ -123,7 +123,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>sets the default actions to be considered as part of riaction.</p>
+</div></span>
   
 </li>
 
@@ -144,7 +146,10 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>sets the default number of attempts to retry a action incase of an internal
+error.</p>
+</div></span>
   
 </li>
 
@@ -186,7 +191,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>sets the valid supported identifiers.</p>
+</div></span>
   
 </li>
 
@@ -207,18 +214,29 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>sets the default actions to be considered as part of riaction</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-3
 4
-5</pre>
+5
+6</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 3</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 4</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_crud_actions'>crud_actions</span>
   <span class='const'>Set</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='lbracket'>[</span><span class='symbol'>:create</span><span class='comma'>,</span> <span class='symbol'>:update</span><span class='comma'>,</span> <span class='symbol'>:destroy</span><span class='rbracket'>]</span>
@@ -235,18 +253,30 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>sets the default number of attempts to retry a action incase of an internal
+error</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-7
-8
-9</pre>
+9
+10
+11</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 7</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 9</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_retry_attempts_for_internal_error'>retry_attempts_for_internal_error</span>
   <span class='int'>3</span>
@@ -269,14 +299,14 @@
       <pre class="lines">
 
 
-15
-16
-17
-18
-19</pre>
+19
+20
+21
+22
+23</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 15</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 19</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_riaction_options'>riaction_options</span>
   <span class='lbrace'>{</span>
@@ -295,18 +325,47 @@
   
 
   
-</p><table class="source_code">
+</p><div class="docstring">
+  <div class="discussion">
+    
+<p>sets the valid supported identifiers</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+<h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'>
+<p>returns an array of symbols</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
-11
-12
-13</pre>
+15
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 11</span>
+      <pre class="code"><span class="info file"># File 'lib/riaction/constants.rb', line 15</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_supported_identifier_types'>supported_identifier_types</span>
   <span class='lbracket'>[</span><span class='symbol'>:email</span><span class='comma'>,</span><span class='symbol'>:username</span><span class='comma'>,</span><span class='symbol'>:custom</span><span class='comma'>,</span><span class='symbol'>:facebook</span><span class='comma'>,</span><span class='symbol'>:twitter</span><span class='comma'>,</span><span class='symbol'>:salesforce</span><span class='rbracket'>]</span>
@@ -321,7 +380,7 @@
 </div>
     
     <div id="footer">
-  Generated on Tue Mar  6 21:35:45 2012 by 
+  Generated on Tue Mar  6 22:00:20 2012 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.5 (ruby-1.9.3).
 </div>
