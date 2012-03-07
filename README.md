@@ -201,6 +201,8 @@ To run a specific event on all instances off a class that define that event:
 
 [Visit their website!](http://www.iactionable.com)
 
+## Tested Ruby Versions
+riaction has been tested on major releases of ruby 1.9.2 and ruby 1.9.3-p125.  If you find something please file a bug https://github.com/zortnac/riaction/issues
 
 ## Authors ##
 
