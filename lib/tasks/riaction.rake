@@ -111,34 +111,37 @@ namespace 'riaction' do
       end
       
       desc "Process a specified event on a specified class (requires EVENT_CLASS and EVENT_NAME)"
-      task :event => :environment do
-        klass_name = ENV['EVENT_CLASS']
-        event_symbol = ENV['EVENT_NAME'].to_sym
-        begin
-          if klass_name.constantize.riaction_events.has_key? event_symbol
-            klass_name.constantize.all.each do |record|
-              if record.riaction_log_event? event_symbol
-                profile_params = record.riaction_event_params[event_symbol][:profile]
-                event_params = record.riaction_event_params[event_symbol][:params].stringify_keys
+      task :event, :klass_name, :event_symbol, :needs => :environment do |t, args|
+        klass_name = args.klass_name
+        event_symbol = args.event_symbol.to_sym rescue nil
+        if klass_name.nil? || event_symbol.nil?
+          puts "provide [Class, event name] as arguments to this rake task"
+        else
+          begin
+            if klass_name.constantize.riaction_events.has_key? event_symbol
+              klass_name.constantize.all.each do |record|
+                if record.riaction_log_event? event_symbol
+                  profile_params = record.riaction_event_params[event_symbol][:profile]
+                  event_params = record.riaction_event_params[event_symbol][:params].stringify_keys
                 
-                IActionable::Api.new.log_event( profile_params[:type].to_s,
-                                                profile_params[:id_type].to_s,
-                                                profile_params[:id].to_s,
-                                                ENV['EVENT_NAME'].to_s,
-                                                event_params )
-                puts "Logged #{ENV['EVENT_NAME']} for #{record.id}"
-              else
-                puts "Event could not be logged for id:#{record.id}"
+                  IActionable::Api.new.log_event( profile_params[:type].to_s,
+                                                  profile_params[:id_type].to_s,
+                                                  profile_params[:id].to_s,
+                                                  event_symbol.to_s,
+                                                  event_params )
+                  puts "Logged #{event_symbol} for #{record.id}"
+                else
+                  puts "Event could not be logged for id:#{record.id}"
+                end
               end
+            else
+              puts "'#{event_symbol}' is not a valid event"
             end
-          else
-            puts "'#{ENV['EVENT_NAME']}' is not a valid event"
+          rescue NameError => e
+            puts e
           end
-        rescue NameError => e
-          puts e
         end
       end
-    
     end
   end
 end

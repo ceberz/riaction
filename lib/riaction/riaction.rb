@@ -330,14 +330,15 @@ module Riaction
         def riaction_event_params
           resolved_hash = {}
           self.class.riaction_events.each_pair do |event_name, args|
-            resolved_hash[event_name] = {}
             resolved_profile = riaction_resolve_param(args[:profile])
-            raise RuntimeError.new("riaction profile missing for instance #{self}") if resolved_profile.nil?
-            unless  resolved_profile.kind_of?(ActiveRecord::Base) && 
-                    resolved_profile.class.riactionary? && 
-                    resolved_profile.class.riaction_profile? &&
-                    resolved_profile.class.riaction_profile_types_defined > 0
-              raise ConfigurationError.new("#{self.class} must provide a riaction profile object for event #{event_name}")
+            if  resolved_profile.nil? ||
+                !resolved_profile.kind_of?(ActiveRecord::Base) ||
+                !resolved_profile.class.riactionary? ||
+                !resolved_profile.class.riaction_profile? ||
+                resolved_profile.class.riaction_profile_types_defined == 0
+              next
+            else
+              resolved_hash[event_name] = {}
             end
             profile_keys = resolved_profile.riaction_profile_keys
             unless args[:profile_type].nil?

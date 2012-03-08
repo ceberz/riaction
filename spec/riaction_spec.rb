@@ -692,8 +692,33 @@ describe "Riaction" do
           @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
         end
         
-        it "should raise a configuration error" do
-          lambda{ @comment.riaction_event_params }.should raise_error(Riaction::ConfigurationError)
+        it "should not raise a configuration error" do
+          lambda{ @comment.riaction_event_params }.should_not raise_error(Riaction::ConfigurationError)
+        end
+        
+        it "should return the event params without the event that points to the non-valid profile" do
+          hash_including({}).should == @comment.riaction_event_params
+        end
+        
+        describe "but other events defined on the same class *do* point to valid profiles" do
+          before do
+            Comment.class_eval do
+              riaction :event, :name => :save_a_comment, :trigger => :update, :profile => :user
+            end
+          end
+          
+          it "should return the event params with only the events that point to valid profiles" do
+            hash_including({
+              :save_a_comment => {
+                :profile => {
+                  :type => :player,
+                  :id_type => :custom,
+                  :id => @user.id
+                },
+                :params => {} 
+              }
+            }).should == @comment.riaction_event_params
+          end
         end
       end
       
@@ -705,8 +730,12 @@ describe "Riaction" do
           @comment = Comment.riactionless{ Comment.create(:content => 'this is a comment') }
         end
         
-        it "should raise a runtime error" do
-          lambda{ @comment.riaction_event_params }.should raise_error(Riaction::RuntimeError)
+        it "should not raise a configuration error" do
+          lambda{ @comment.riaction_event_params }.should_not raise_error(Riaction::ConfigurationError)
+        end
+        
+        it "should return the event params without the event that points to the non-valid profile" do
+          hash_including({}).should == @comment.riaction_event_params
         end
       end
       

@@ -187,6 +187,29 @@ describe "sending an event to IActionable from the name of a riaction class and 
       end
     end
     
+    describe "when an event that the class defines is missing from the instance (due here to an invalid profile)" do
+      before do
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
+        end
+        
+        # creating the comment wihtout a user will lead to a missing profile for the event
+        @comment = Comment.riactionless{ Comment.create(:content => 'this is a comment') }
+      end
+      
+      it "should not try to create the event" do
+        @api.should_not_receive(:log_event)
+        begin
+          ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+        rescue Exception => e
+        end
+      end
+      
+      it "should raise a ConfigurationError" do
+        lambda { ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id) }.should raise_error(::Riaction::ConfigurationError)
+      end
+    end
+    
     describe "when the object specified is missing" do
       before do
         Comment.class_eval do

@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 1.2.7 ##
+
+* Fixed a bug where the event parameters on the instance of class defining multiple events raises an error when one of those events does not point to a valid profile. Now, that event will simply be missing from the returned event parameters.  Attempting to log an event that does not point to a valid profile will raise the appropriate error.
+* riaction:rails:process:event task relies on rake-style arguments instead of shell variables.
+
 ## 1.2.6 ##
 
 * resque jobs will re-enqeue on a timeout error
