@@ -193,7 +193,7 @@ To process all of the models in your application that declare themselves as prof
 
 To run a specific event on all instances off a class that define that event:
 
-    rake riaction:rails:process:event['ClassName', :event_name]
+    rake riaction:rails:process:event[ClassName, event_name]
 
 ----------------
 
