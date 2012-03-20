@@ -1,5 +1,11 @@
+require "riaction/config"
 require "active_support"
-require "active_record"
+
+#there has to be a more elegant way to do this? Push to bundler?
+if Riaction::Config.new().orm == :active_record
+  require "active_record"
+end
+
 require 'riaction/event_performer'
 require 'riaction/profile_creator'
 require 'riaction/profile_creation_callback'
@@ -10,11 +16,11 @@ module Riaction
   class ConfigurationError < StandardError; end
   class NoEventDefined < StandardError; end
   class NoProfileDefined < StandardError; end
-  
+
   module Riaction
     PROFILE_CLASSES = []
     EVENT_CLASSES = []
-    
+
     module ClassMethods
       def riaction(type, opts)
         establish_riactionary_class unless riactionary?
@@ -46,27 +52,27 @@ module Riaction
           def riactionary?
             true
           end
-          
+
           def riactionless?
             @riactionless ||= false
           end
-          
+
           def riaction_profile_keys
             @riaction_profile_keys ||= {}
           end
-          
+
           def riaction_events
             @riaction_events ||= {}
           end
-          
+
           def riaction_options
             @riaction_options ||= ::Riaction::Constants.riaction_options
           end
-          
+
           def riaction_use_profile
             @riaction_use_profile ||= nil
           end
-          
+
           def riactionless(&block)
             if block_given?
               @riactionless = true
@@ -77,14 +83,14 @@ module Riaction
               end
             end
           end
-          
+
           def reset_riaction
             riaction_profile_keys.clear
             riaction_events.clear
             riaction_options.merge!(::Riaction::Constants.riaction_options)
             @riaction_use_profile = nil
           end
-          
+
           def add_or_update_riaction_profile(type, opts)
             display_name = opts.delete(:display_name) || nil
             riaction_check_type(:display_name, display_name, [Symbol, Proc, NilClass])
@@ -105,7 +111,7 @@ module Riaction
             profile_type = opts.delete(:profile_type)
             params = opts.delete(:params) || {}
             guard = opts.delete(:if) || opts.delete(:guard) || true
-            # check for required types and presence 
+            # check for required types and presence
             if profile.nil?
               raise ConfigurationError.new("#{self.to_s} defining a riaction event must provide a profile")
             end
@@ -133,22 +139,22 @@ module Riaction
               end
             end
           end
-          
+
           def riaction_profile_types_defined
             riaction_profile_keys.size
           end
-          
+
           def riaction_events_defined
             riaction_events.size
           end
-          
+
           def riaction_check_type(name, value, allowed_types)
-            unless allowed_types.any?{|type| value.is_a?(type)} 
+            unless allowed_types.any?{|type| value.is_a?(type)}
               raise ConfigurationError.new("value given for #{name} must be of types: #{allowed_types.map(&:to_s).join(', ')}")
             end
           end
         end
-        
+
         include ::Riaction::Riaction::InstanceMethods
       end
 
@@ -165,7 +171,7 @@ module Riaction
 
         after_create ::Riaction::ProfileCreationCallback.new
       end
-      
+
       def establish_riactionary_event_class
         (::Riaction::Riaction::EVENT_CLASSES << self.to_s).uniq!
 
@@ -173,7 +179,7 @@ module Riaction
           def riaction_events?
             true
           end
-          
+
           def riaction_defines_event?(event_name)
             riaction_events.has_key? event_name
           end
@@ -185,16 +191,16 @@ module Riaction
       def riactionary?
         false
       end
-      
+
       def riaction_profile?
         false
       end
-      
+
       def riaction_events?
         false
       end
     end
-    
+
     module InstanceMethods
       def riaction_resolve_param(poly)
         case poly
@@ -212,12 +218,12 @@ module Riaction
             resolved_hash[key] = self.respond_to?(value) ? self.send(value) : value
           end
           resolved_hash
-        else 
+        else
           poly
         end
       end
     end
-    
+
     module Profile
       module InstanceMethods
         def riaction_profile_keys
@@ -230,19 +236,19 @@ module Riaction
           end
           resolved_hash
         end
-        
+
         def riaction_set_profile(type)
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{type}") unless riaction_profile_keys.has_key?(type)
           @riaction_use_profile = type
           self
         end
-        
+
         def riaction_profile_display_name
           riaction_resolve_param self.class.riaction_profile_keys.fetch(riaction_use_profile)[:display_name]
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         end
-        
+
         #################
         #  API wrappers #
         #################
@@ -316,9 +322,9 @@ module Riaction
         rescue IActionable::Error::BadRequest => e
           nil
         end
-        
+
         private
-        
+
         def riaction_use_profile
           @riaction_use_profile || self.class.riaction_use_profile
         end
@@ -362,7 +368,7 @@ module Riaction
           end
           resolved_hash
         end
-        
+
         def riaction_log_event?(name)
           riaction_resolve_param self.class.riaction_events.fetch(name)[:guard]
         rescue KeyError
