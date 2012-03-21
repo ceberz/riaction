@@ -42,6 +42,7 @@ describe "Riaction" do
     ActiveRecord::Base.connection.begin_db_transaction
     
     @api = mock("mocked IActionable API")
+    @api.stub(:set_object_wrapping).and_return(@api)
     IActionable::Api.stub!(:new).and_return(@api)
     Resque.stub(:enqueue).and_return true
     
@@ -138,30 +139,77 @@ describe "Riaction" do
           @user = User.riactionless{ User.create(:name => 'zortnac') }
           @mock_response = mock("mock API response").as_null_object
         end
+        
+        describe "when told to return raw JSON from the API" do
+          before do
+            @user.riaction_objectify_response_data(false)
+          end
+          
+          it "should load a profile through the API, set to not wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(false).and_return(@api)
+            @api.should_receive(:get_profile_summary).once.ordered.with("player", "custom", @user.id.to_s, 10).and_return(@mock_response)
+            @user.riaction_profile_summary(10).should == @mock_response
+          end
 
-        it "should load a profile through the API with the correct parameters" do
-          @api.should_receive(:get_profile_summary).once.with("player", "custom", @user.id.to_s, 10).and_return(@mock_response)
-          @user.riaction_profile_summary(10).should == @mock_response
-        end
-        
-        it  "should load profile achievments through the API with the correct parameters" do
-          @api.should_receive(:get_profile_achievements).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
-          @user.riaction_profile_achievements.should == @mock_response
-        end
-        
-        it  "should load profile challenges through the API with the correct parameters" do
-          @api.should_receive(:get_profile_challenges).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
-          @user.riaction_profile_challenges.should == @mock_response
-        end
-        
-        it  "should load profile goals through the API with the correct parameters" do
-          @api.should_receive(:get_profile_goals).once.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
-          @user.riaction_profile_goals.should == @mock_response
-        end
+          it  "should load profile achievments through the API, set to not wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(false).and_return(@api)
+            @api.should_receive(:get_profile_achievements).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_achievements.should == @mock_response
+          end
 
-        it "should load profile notifications through the API with the correct parameters" do
-          @api.should_receive(:get_profile_notifications).once.with("player", "custom", @user.id.to_s).and_return(@mock_response)
-          @user.riaction_profile_notifications.should == @mock_response
+          it  "should load profile challenges through the API, set to not wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(false).and_return(@api)
+            @api.should_receive(:get_profile_challenges).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_challenges.should == @mock_response
+          end
+
+          it  "should load profile goals through the API, set to not wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(false).and_return(@api)
+            @api.should_receive(:get_profile_goals).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_goals.should == @mock_response
+          end
+
+          it "should load profile notifications through the API, set to not wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(false).and_return(@api)
+            @api.should_receive(:get_profile_notifications).once.ordered.with("player", "custom", @user.id.to_s).and_return(@mock_response)
+            @user.riaction_profile_notifications.should == @mock_response
+          end
+        end
+        
+        describe "when told to return json from the API wrapped as objects" do
+          before do
+            @user.riaction_objectify_response_data(true)
+          end
+          
+          it "should load a profile through the API, set to wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(true).and_return(@api)
+            @api.should_receive(:get_profile_summary).once.ordered.with("player", "custom", @user.id.to_s, 10).and_return(@mock_response)
+            @user.riaction_profile_summary(10).should == @mock_response
+          end
+
+          it  "should load profile achievments through the API, set to wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(true).and_return(@api)
+            @api.should_receive(:get_profile_achievements).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_achievements.should == @mock_response
+          end
+
+          it  "should load profile challenges through the API, set to wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(true).and_return(@api)
+            @api.should_receive(:get_profile_challenges).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_challenges.should == @mock_response
+          end
+
+          it  "should load profile goals through the API, set to wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(true).and_return(@api)
+            @api.should_receive(:get_profile_goals).once.ordered.with("player", "custom", @user.id.to_s, nil).and_return(@mock_response)
+            @user.riaction_profile_goals.should == @mock_response
+          end
+
+          it "should load profile notifications through the API, set to wrap the response, with the correct parameters" do
+            @api.should_receive(:set_object_wrapping).once.ordered.with(true).and_return(@api)
+            @api.should_receive(:get_profile_notifications).once.ordered.with("player", "custom", @user.id.to_s).and_return(@mock_response)
+            @user.riaction_profile_notifications.should == @mock_response
+          end
         end
       end
     end

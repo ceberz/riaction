@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.3.0 ##
+
+* Added new feature to have a riaction profile class return the raw json from the IActionable API instead of the objects they get wrapped in by ruby-iactionable gem
+
 ## 1.2.7 ##
 
 * Fixed a bug where the event parameters on the instance of class defining multiple events raises an error when one of those events does not point to a valid profile. Now, that event will simply be missing from the returned event parameters.  Attempting to log an event that does not point to a valid profile will raise the appropriate error.
