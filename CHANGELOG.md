@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.3.1 ##
+
+* re-naming the methods added in v1.3.0
+
 ## 1.3.0 ##
 
 * Added new feature to have a riaction profile class return the raw json from the IActionable API instead of the objects they get wrapped in by ruby-iactionable gem

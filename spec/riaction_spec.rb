@@ -142,7 +142,7 @@ describe "Riaction" do
         
         describe "when told to return raw JSON from the API" do
           before do
-            @user.riaction_objectify_response_data(false)
+            @user.riaction_wrap_response_data(false)
           end
           
           it "should load a profile through the API, set to not wrap the response, with the correct parameters" do
@@ -178,7 +178,7 @@ describe "Riaction" do
         
         describe "when told to return json from the API wrapped as objects" do
           before do
-            @user.riaction_objectify_response_data(true)
+            @user.riaction_wrap_response_data(true)
           end
           
           it "should load a profile through the API, set to wrap the response, with the correct parameters" do
