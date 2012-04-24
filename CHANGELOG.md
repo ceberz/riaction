@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.3.2 ##
+
+* addressing deprecation warning: https://github.com/zortnac/riaction/issues/4
+
 ## 1.3.1 ##
 
 * re-naming the methods added in v1.3.0

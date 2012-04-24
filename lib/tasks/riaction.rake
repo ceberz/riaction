@@ -111,7 +111,7 @@ namespace 'riaction' do
       end
       
       desc "Process a specified event on a specified class (requires EVENT_CLASS and EVENT_NAME)"
-      task :event, :klass_name, :event_symbol, :needs => :environment do |t, args|
+      task :event, [:klass_name, :event_symbol] => [:environment] do |t, args|
         klass_name = args.klass_name
         event_symbol = args.event_symbol.to_sym rescue nil
         if klass_name.nil? || event_symbol.nil?
