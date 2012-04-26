@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.3.3 ##
+
+* fixed serious bug where object-wrapping of the API response was defaulting to false, instead of true
+
 ## 1.3.2 ##
 
 * addressing deprecation warning: https://github.com/zortnac/riaction/issues/4

@@ -68,6 +68,11 @@ describe "Riaction" do
       end
       User.riactionary?.should be_true
     end
+    
+    it "should default to object-wrapping API data" do
+      user = User.riactionless{ User.create(:name => 'zortnac') }
+      user.riaction_wrap_response_data?.should be_true
+    end
   end
   
   describe "defining an IA profile on an AR class" do

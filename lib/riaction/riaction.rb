@@ -244,8 +244,12 @@ module Riaction
         end
         
         def riaction_wrap_response_data(bool)
-          @riaction_wrap_response_data = !!bool
+          @riaction_wrap_response = !!bool
           self
+        end
+        
+        def riaction_wrap_response_data?
+          riaction_wrap_response
         end
         
         def riaction_wrap_data
@@ -263,7 +267,7 @@ module Riaction
         def riaction_profile_summary(achievement_count=nil)
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_summary(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, achievement_count)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_summary(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, achievement_count)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -273,7 +277,7 @@ module Riaction
         def riaction_profile_achievements(filter_type=nil)
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_achievements(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_achievements(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -283,7 +287,7 @@ module Riaction
         def riaction_profile_challenges(filter_type=nil)
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_challenges(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_challenges(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -293,7 +297,7 @@ module Riaction
         def riaction_profile_goals(filter_type=nil)
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_goals(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_goals(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, filter_type)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -303,7 +307,7 @@ module Riaction
         def riaction_profile_notifications
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_notifications(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_notifications(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -313,7 +317,7 @@ module Riaction
         def riaction_profile_points(point_type)
           @iactionable_api ||= IActionable::Api.new
           keys = riaction_profile_keys.fetch(riaction_use_profile)
-          @iactionable_api.set_object_wrapping(@riaction_wrap_response_data).get_profile_points(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, point_type)
+          @iactionable_api.set_object_wrapping(riaction_wrap_response).get_profile_points(riaction_use_profile.to_s, keys.first[0].to_s, keys.first[1].to_s, point_type)
         rescue KeyError => e
           raise RuntimeError.new("#{self.to_s} does not define a profile type #{riaction_use_profile}")
         rescue IActionable::Error::BadRequest => e
@@ -334,6 +338,10 @@ module Riaction
         
         def riaction_use_profile
           @riaction_use_profile || self.class.riaction_use_profile
+        end
+        
+        def riaction_wrap_response
+          @riaction_wrap_response.nil? ? true : @riaction_wrap_response
         end
       end
     end
