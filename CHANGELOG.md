@@ -1,5 +1,9 @@
 # CHANGELOG #
 
+## 1.3.4 ##
+
+* background logging of events will first check if the profile exists, and re-enqueue the job if it doesn't, up to a max number of retries, at which point it will log the event regardless.
+
 ## 1.3.3 ##
 
 * fixed serious bug where object-wrapping of the API response was defaulting to false, instead of true

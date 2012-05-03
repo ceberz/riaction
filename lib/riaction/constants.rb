@@ -9,6 +9,12 @@ module Riaction
     def self.retry_attempts_for_internal_error
       3
     end
+    
+    # sets the default number of attempts to retry to log an event when the profile is missing
+    # this is for when the logging of an event accidentally happens before, or too soon afterwards, the creation of a profile
+    def self.retry_attempts_for_missing_profile
+      4
+    end
 
     # sets the valid supported identifiers
     # @return  returns an array of symbols

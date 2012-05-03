@@ -29,5 +29,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "activerecord", ">= 3.0.0"
   s.add_runtime_dependency "activesupport", ">= 3.0.0"
   s.add_runtime_dependency "resque"
-  s.add_runtime_dependency "ruby-iactionable", ">= 0.1.0"
+  s.add_runtime_dependency "ruby-iactionable", ">= 0.1.1"
 end

@@ -16,11 +16,26 @@ module Riaction
             klass_name.constantize.riaction_events? &&
             klass_name.constantize.riaction_defines_event?(event_name_sym) )
         if event_params.has_key?(event_name_sym)
-          iactionable_api.log_event(  event_params[event_name_sym][:profile][:type],
-                                      event_params[event_name_sym][:profile][:id_type],
-                                      event_params[event_name_sym][:profile][:id],
-                                      event_name_sym,
-                                      event_params[event_name_sym][:params])
+          begin
+            iactionable_api.get_profile_summary(event_params[event_name_sym][:profile][:type], 
+                                                event_params[event_name_sym][:profile][:id_type], 
+                                                event_params[event_name_sym][:profile][:id])
+            iactionable_api.log_event(  event_params[event_name_sym][:profile][:type],
+                                        event_params[event_name_sym][:profile][:id_type],
+                                        event_params[event_name_sym][:profile][:id],
+                                        event_name_sym,
+                                        event_params[event_name_sym][:params])
+          rescue IActionable::Error::BadRequest => e
+            if attempt < ::Riaction::Constants.retry_attempts_for_missing_profile
+              Resque.enqueue(self, event_name, klass_name, id, attempt+1)
+            else
+              iactionable_api.log_event(  event_params[event_name_sym][:profile][:type],
+                                          event_params[event_name_sym][:profile][:id_type],
+                                          event_params[event_name_sym][:profile][:id],
+                                          event_name_sym,
+                                          event_params[event_name_sym][:params])
+            end
+          end
         else
           raise ::Riaction::ConfigurationError.new("Instance of #{klass_name} with ID #{id} could not construct event parameters for event #{event_name}.  Is the profile a valid one?")
         end

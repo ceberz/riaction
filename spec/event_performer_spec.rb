@@ -31,6 +31,7 @@ describe "sending an event to IActionable from the name of a riaction class and 
     ActiveRecord::Base.connection.begin_db_transaction
     
     @api = mock("mocked IActionable API")
+    @api.stub!(:get_profile_summary)
     IActionable::Api.stub!(:new).and_return(@api)
     Resque.stub(:enqueue).and_return true
     
@@ -89,6 +90,36 @@ describe "sending an event to IActionable from the name of a riaction class and 
                                                   :make_a_comment, 
                                                   {})
         ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+      end
+    end
+    
+    describe "when the profile attached to the event does not exist on IActionable" do
+      before do
+        Comment.class_eval do
+          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :player
+        end
+        
+        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
+        
+        @api.stub!(:get_profile_summary).and_raise(IActionable::Error::BadRequest.new(nil))
+      end
+      
+      it "should not log the event, but reschedule the job with an incremented attempt count" do
+        @api.should_not_receive(:log_event)
+        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id, 1)
+        ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+      end
+      
+      describe "and the number of attempts has reached the max" do
+        it "should log the event, and not re-enqueue" do
+          @api.should_receive(:log_event).once.with(@comment.riaction_event_params[:make_a_comment][:profile][:type], 
+                                                    @comment.riaction_event_params[:make_a_comment][:profile][:id_type],
+                                                    @comment.riaction_event_params[:make_a_comment][:profile][:id],
+                                                    :make_a_comment, 
+                                                    {})
+          Resque.should_not_receive(:enqueue)
+          ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id, Riaction::Constants.retry_attempts_for_missing_profile)
+        end
       end
     end
     
