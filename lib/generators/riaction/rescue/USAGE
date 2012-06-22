@@ -1,0 +1,8 @@
+Description:
+    Generate a migration for optional model save failed API calls.
+
+Example:
+    rails generate riaction:rescue
+
+    This will create:
+        db/migrate/create_rescued_ia_api_calls.rb

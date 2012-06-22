@@ -6,10 +6,6 @@ module Riaction
       load "tasks/riaction.rake"
     end
     
-    generators do
-      require "generators/riaction/riaction_generator"
-    end
-    
     initializer "riaction_railtie.configure_i_actionable_creds" do |app|
       begin
         IActionable::Api.init_settings(YAML.load_file("#{::Rails.root}/config/i_actionable.yml")[::Rails.env].symbolize_keys!)

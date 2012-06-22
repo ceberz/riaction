@@ -2,7 +2,7 @@ Description:
     Generate a Yaml file in your config directory to contain your IActionable credentials.
 
 Example:
-    rails generate riaction ENVIRONMENT:APP_KEY:API_KEY ENVIRONMENT:APP_KEY:API_KEY
+    rails generate riaction:install ENVIRONMENT:APP_KEY:API_KEY ENVIRONMENT:APP_KEY:API_KEY
 
     This will create:
         config/i_actionable.yml
