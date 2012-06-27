@@ -16,7 +16,9 @@ Riaction uses [Resque](https://github.com/defunkt/resque) to schedule and perfor
 
 Riaction comes with a generator for creating a YAML file to contain your credentials for each environment of your application.  The YAML file is necessary for riaction to run correctly in your rails app.
 
-    rails g riaction development:12345:abcde production:54321:edcba
+    rails g riaction:install development:12345:abcde production:54321:edcba
+
+This generator will also create an initializer in config/initializers/riaction.rb, where you can provide custom error handling if you wish (see below in *Custom API Error Handling*).
 
 ### Declaring A Model As A Profile ###
 
@@ -176,6 +178,23 @@ If you want to avoid the automatic creation of a profile, or the automatic loggi
     User.riactionless{ User.create(:nickname => 'zortnac') }                    # won't create the profile for the newly created user
     Review.riactionless{ @user_instance.reviews.create(:text => "loved it!") }  # won't fire the 'write_a_review' event
     Review.riactionless{ @review_instance.trigger_thumbs_up! }                  # won't fire the 'receive_thumbs_up' event
+
+#### Custom API Error Handling ####
+
+When the API returns a status code 500 on internal error the [Ruby-IActionable gem](https://github.com/zortnac/Ruby-IActionable) will raise an exception of class IActionable::Error::Internal.  The default behavior in riaction is to re-raise the error.  You can create custom behavior to log the error through a third party service (like Airbrake), have riaction re-schedule the task to try again, save the information to have it be re-attempted later through your own means, or any combination of the above:
+
+    ::Riaction::EventPerformer.handle_api_failure_with do |exception, event_name, class_name, id|
+      # log the error through a third party service and then re-attempt
+      Airbrake.notify(exception)
+      true
+    end
+    
+    ::Riaction::ProfileCreator.handle_api_failure_with do |exception, class_name, id|
+      # log the error through a third party service, punish the user for their failure, and do not re-attempt
+      Airbrake.notify(exception)
+      class_name.constantize.find_by_id(id).flog(:lashes => 100)
+      false
+    end
 
 ### Rails Rake Tasks ###
 
