@@ -135,7 +135,7 @@ describe "automatic profile creation from riaction definitions:" do
       
       describe "and custom behavior of the failure handler is in place" do
         before do
-          ::Riaction::ProfileCreator.handle_api_failure_with do |exception|
+          ::Riaction::ProfileCreator.handle_api_failure_with do |exception, class_name, id|
             3.times do 
               exception.inspect
             end

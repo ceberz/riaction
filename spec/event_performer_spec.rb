@@ -257,7 +257,7 @@ describe "sending an event to IActionable from the name of a riaction class and 
       
       describe "and custom behavior of the failure handler is in place" do
         before do
-          ::Riaction::EventPerformer.handle_api_failure_with do |exception|
+          ::Riaction::EventPerformer.handle_api_failure_with do |exception, event_name, class_name, id|
             5.times do 
               exception.inspect
             end
