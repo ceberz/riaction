@@ -268,6 +268,26 @@ describe "sending an event to IActionable from the name of a riaction class and 
           @exception.should_receive(:inspect).exactly(5).times
           ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
         end
+        
+        describe "and that custom behavior evaluates to true" do
+          it "should reschedule the event" do
+            Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id)
+            ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+          end
+        end
+        
+        describe "and that custom behavior evaluates to false" do
+          before do
+            ::Riaction::EventPerformer.handle_api_failure_with do |exception, event_name, class_name, id|
+              false
+            end
+          end
+          
+          it "should not reschedule the event" do
+            Resque.should_not_receive(:enqueue)
+            ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+          end
+        end
       end
     end
     

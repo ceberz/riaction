@@ -48,7 +48,9 @@ module Riaction
     
     def self.handle_api_failure(exception, event_name, klass_name, id)
       if @api_failure_handler_block
-        @api_failure_handler_block.call(exception, event_name, klass_name, id)
+        if @api_failure_handler_block.call(exception, event_name, klass_name, id)
+          Resque.enqueue(self, event_name, klass_name, id)
+        end
       else
         default_behavior(exception)
       end

@@ -146,6 +146,26 @@ describe "automatic profile creation from riaction definitions:" do
           @exception.should_receive(:inspect).exactly(3).times
           ::Riaction::ProfileCreator.perform('User', @user.id)
         end
+        
+        describe "and that custom behavior evaluates to true" do
+          it "should reschedule the event" do
+            Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", @user.id)
+            ::Riaction::ProfileCreator.perform('User', @user.id)
+          end
+        end
+        
+        describe "and that custom behavior evaluates to false" do
+          before do
+            ::Riaction::ProfileCreator.handle_api_failure_with do |exception, class_name, id|
+              false
+            end
+          end
+          
+          it "should not reschedule the event" do
+            Resque.should_not_receive(:enqueue)
+            ::Riaction::ProfileCreator.perform('User', @user.id)
+          end
+        end
       end
     end
     
