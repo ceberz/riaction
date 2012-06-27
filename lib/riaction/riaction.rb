@@ -1,5 +1,6 @@
 require "active_support"
 require "active_record"
+require 'riaction/api_failure'
 require 'riaction/event_performer'
 require 'riaction/profile_creator'
 require 'riaction/profile_creation_callback'

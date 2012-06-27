@@ -1,5 +1,10 @@
 # CHANGELOG #
 
+## 1.4.0 ##
+
+* Since IActionable creates non-existent profiles named in an event logging, the event logger no longer tries to confirm profile existence as a pre-condition.
+* Adding support to provide custom behavior when the API returns a 500 on creating a profile or logging an event.
+
 ## 1.3.4 ##
 
 * background logging of events will first check if the profile exists, and re-enqueue the job if it doesn't, up to a max number of retries, at which point it will log the event regardless.
