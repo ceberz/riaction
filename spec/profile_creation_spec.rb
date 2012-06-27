@@ -114,16 +114,38 @@ describe "automatic profile creation from riaction definitions:" do
     
     describe "when the call to IActionable, through API wrapper, fails" do
       before do
-        @api.stub!(:create_profile).and_raise(IActionable::Error::Internal.new(""))
+        @exception = IActionable::Error::Internal.new("")
+        @api.stub!(:create_profile).and_raise(@exception)
         User.class_eval do
           riaction :profile, :type => :player, :custom => :id, :username => :name
         end
         @user = User.riactionless{ User.create(:name => 'zortnac') }
       end
       
-      it "should re-enqueue the job with an attempt count" do
-        Resque.should_receive(:enqueue).once.with(Riaction::ProfileCreator, "User", @user.id, 1)
-        ::Riaction::ProfileCreator.perform('User', @user.id, 0)
+      it "should handle the failure passing the exception, class name, and model id" do
+        ::Riaction::ProfileCreator.should_receive(:handle_api_failure).once.with(@exception, 'User', @user.id)
+        ::Riaction::ProfileCreator.perform('User', @user.id)
+      end
+      
+      describe "and the default behavior of the failure handler is in place" do
+        it "should re-raise the exception" do
+          lambda{::Riaction::ProfileCreator.perform('User', @user.id)}.should raise_error(@exception)
+        end
+      end
+      
+      describe "and custom behavior of the failure handler is in place" do
+        before do
+          ::Riaction::ProfileCreator.handle_api_failure_with do |exception|
+            3.times do 
+              exception.inspect
+            end
+          end
+        end
+        
+        it "should perform the custom behavior" do
+          @exception.should_receive(:inspect).exactly(3).times
+          ::Riaction::ProfileCreator.perform('User', @user.id)
+        end
       end
     end
     

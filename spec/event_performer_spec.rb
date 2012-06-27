@@ -93,36 +93,6 @@ describe "sending an event to IActionable from the name of a riaction class and 
       end
     end
     
-    describe "when the profile attached to the event does not exist on IActionable" do
-      before do
-        Comment.class_eval do
-          riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :player
-        end
-        
-        @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
-        
-        @api.stub!(:get_profile_summary).and_raise(IActionable::Error::BadRequest.new(nil))
-      end
-      
-      it "should not log the event, but reschedule the job with an incremented attempt count" do
-        @api.should_not_receive(:log_event)
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id, 1)
-        ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
-      end
-      
-      describe "and the number of attempts has reached the max" do
-        it "should log the event, and not re-enqueue" do
-          @api.should_receive(:log_event).once.with(@comment.riaction_event_params[:make_a_comment][:profile][:type], 
-                                                    @comment.riaction_event_params[:make_a_comment][:profile][:id_type],
-                                                    @comment.riaction_event_params[:make_a_comment][:profile][:id],
-                                                    :make_a_comment, 
-                                                    {})
-          Resque.should_not_receive(:enqueue)
-          ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id, Riaction::Constants.retry_attempts_for_missing_profile)
-        end
-      end
-    end
-    
     describe "when fetching the event params raises a" do
       before do
         Comment.class_eval do
@@ -135,7 +105,7 @@ describe "sending an event to IActionable from the name of a riaction class and 
       describe "RuntimeError" do
         before do
           @comment.stub!(:riaction_event_params).and_raise(::Riaction::RuntimeError)
-          Comment.stub!(:find_by_id!).and_return(@comment)
+          Comment.stub!(:find_by_id).and_return(@comment)
         end
         
         it "should not try to create the event" do
@@ -154,7 +124,7 @@ describe "sending an event to IActionable from the name of a riaction class and 
       describe "ConfigurationError" do
         before do
           @comment.stub!(:riaction_event_params).and_raise(::Riaction::ConfigurationError)
-          Comment.stub!(:find_by_id!).and_return(@comment)
+          Comment.stub!(:find_by_id).and_return(@comment)
         end
         
         it "should not try to create the event" do
@@ -266,16 +236,38 @@ describe "sending an event to IActionable from the name of a riaction class and 
     
     describe "when the call to IActionable, through API wrapper, fails" do
       before do
-        @api.stub!(:log_event).and_raise(IActionable::Error::Internal.new(""))
+        @exception = IActionable::Error::Internal.new("")
+        @api.stub!(:log_event).and_raise(@exception)
         Comment.class_eval do
           riaction :event, :name => :make_a_comment, :trigger => :create, :profile => :user, :profile_type => :npc, :params => {:foo => 'bar'}
         end
         @comment = Comment.riactionless{ Comment.create(:user_id => @user.id, :content => 'this is a comment') }
       end
       
-      it "should re-enqueue the job with an attempt count" do
-        Resque.should_receive(:enqueue).once.with(Riaction::EventPerformer, :make_a_comment, 'Comment', @comment.id, 1)
+      it "should handle the failure passing the exception, event name, class name, and model id" do
+        ::Riaction::EventPerformer.should_receive(:handle_api_failure).once.with(@exception, :make_a_comment, 'Comment', @comment.id)
         ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+      end
+      
+      describe "and the default behavior of the failure handler is in place" do
+        it "should re-raise the exception" do
+          lambda{::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)}.should raise_error(@exception)
+        end
+      end
+      
+      describe "and custom behavior of the failure handler is in place" do
+        before do
+          ::Riaction::EventPerformer.handle_api_failure_with do |exception|
+            5.times do 
+              exception.inspect
+            end
+          end
+        end
+        
+        it "should perform the custom behavior" do
+          @exception.should_receive(:inspect).exactly(5).times
+          ::Riaction::EventPerformer.perform(:make_a_comment, 'Comment', @comment.id)
+        end
       end
     end
     
