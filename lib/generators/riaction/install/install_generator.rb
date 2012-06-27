@@ -10,6 +10,7 @@ module Riaction
                                         :app_key => credential[credential_regexp,2], 
                                         :api_key => credential[credential_regexp,3] } }
         template "i_actionable.yml", "config/i_actionable.yml"
+        template "riaction.rb", "config/initializers/riaction.rb"
       end
 
       private
